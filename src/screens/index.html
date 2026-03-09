@@ -1,0 +1,1308 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>MockMentor - Shaping Tomorrow’s Professionals</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="manifest" href="manifest.json" />
+  <script src="scroll_tilt.js"></script>
+  <script src="glow_effect.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+  <link rel="stylesheet" href="glow_effect.css" />
+
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800;900&display=swap");
+
+    body {
+      font-family: "Inter", sans-serif;
+      background: #0f172a;
+      color: white;
+      overflow-x: hidden;
+    }
+
+    /* Glassmorphism */
+    .glass {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .glass-card {
+      background: linear-gradient(145deg,
+          rgba(30, 41, 59, 0.6),
+          rgba(15, 23, 42, 0.8));
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      transition:
+        transform 0.3s ease,
+        border-color 0.3s ease;
+    }
+
+    .glass-card:hover {
+      transform: translateY(-5px);
+      border-color: #6366f1;
+      box-shadow: 0 10px 30px -10px rgba(99, 102, 241, 0.2);
+    }
+
+    .glass-modal {
+      background: rgba(15, 23, 42, 0.95);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .text-gradient {
+      background: linear-gradient(to right, #818cf8, #c084fc, #f472b6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* Auth Animations (Eye Tracking) */
+    .eye {
+      width: 40px;
+      height: 40px;
+      background: white;
+      border-radius: 50%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    .pupil {
+      width: 14px;
+      height: 14px;
+      background: #0f172a;
+      border-radius: 50%;
+      position: absolute;
+      transition: transform 0.08s ease-out;
+    }
+
+    .eyelid {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 0%;
+      background: #0f172a;
+      transition: height 0.1s;
+      z-index: 10;
+    }
+
+    .blink .eyelid {
+      height: 100%;
+    }
+
+    #authModal {
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      opacity: 0;
+      visibility: hidden;
+      transform: scale(0.95);
+    }
+
+    #authModal.active {
+      opacity: 1;
+      visibility: visible;
+      transform: scale(1);
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #475569;
+    }
+  </style>
+</head>
+
+<body class="relative">
+  <canvas id="neuralCanvas" class="fixed top-0 left-0 w-full h-full -z-10"></canvas>
+
+  <nav class="fixed top-0 w-full z-40 px-2 py-2 md:px-6 md:py-4 transition-all duration-300">
+    <div
+      class="max-w-7xl mx-auto glass rounded-2xl px-3 py-2 md:px-6 md:py-3 flex justify-between items-center shadow-2xl">
+      <div class="flex items-center gap-2 cursor-pointer" onclick="window.scrollTo(0, 0)">
+        <div class="bg-indigo-600/20 p-1.5 md:p-2 rounded-lg">
+          <i data-lucide="brain-circuit" class="text-indigo-400 w-5 h-5 md:w-6 md:h-6"></i>
+        </div>
+        <div class="flex flex-col">
+          <span class="text-lg md:text-xl font-bold tracking-wide text-white leading-none">Mock<span
+              class="text-indigo-400">Mentor</span></span>
+          <span class="text-[8px] md:text-[10px] text-gray-400 font-medium tracking-wider block">Shaping Tomorrow’s
+            Professionals</span>
+        </div>
+      </div>
+      <div class="hidden md:flex gap-8 text-sm font-medium text-gray-300">
+        <a href="#roadmap"
+          class="hover:text-white hover:underline decoration-indigo-500 underline-offset-4 transition">Roadmap</a>
+        <a href="#pricing"
+          class="hover:text-white hover:underline decoration-indigo-500 underline-offset-4 transition">Pricing</a>
+        <a href="#business"
+          class="hover:text-white hover:underline decoration-indigo-500 underline-offset-4 transition">Business</a>
+        <a href="#trust"
+          class="hover:text-white hover:underline decoration-indigo-500 underline-offset-4 transition">Trust</a>
+        <a href="#contact"
+          class="hover:text-white hover:underline decoration-indigo-500 underline-offset-4 transition">Contact</a>
+      </div>
+      <div id="authNavContainer" class="flex items-center gap-4">
+        <button onclick="openAuthModal()"
+          class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-1.5 md:px-6 md:py-2 text-sm md:text-base rounded-xl font-semibold transition shadow-lg hover:shadow-indigo-500/25">
+          Login
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <header class="relative h-screen flex flex-col items-center justify-center overflow-hidden px-4">
+    <div class="z-10 text-center max-w-5xl mx-auto mt-16">
+      <div
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-sm text-indigo-200 mb-8 border border-indigo-500/30 animate-pulse">
+        <span class="w-2 h-2 bg-indigo-400 rounded-full"></span> V2.0 Now Live
+      </div>
+
+      <h1
+        class="text-5xl md:text-7xl lg:text-8xl font-black mb-6 tracking-tight leading-tight text-white drop-shadow-xl">
+        Refining Talent <br />
+        <span class="text-gradient">Via Intelligence</span>
+      </h1>
+
+      <p class="text-gray-300 text-lg md:text-2xl max-w-3xl mx-auto mb-10 leading-relaxed font-medium drop-shadow-md">
+        The world's most advanced AI interview simulator. We don't just grade
+        your answers; we analyze your
+        <span class="text-white font-bold">logic</span>,
+        <span class="text-white font-bold">confidence</span>, and
+        <span class="text-white font-bold">potential</span>.
+      </p>
+
+      <div class="flex flex-col md:flex-row gap-4 justify-center items-center">
+        <button onclick="handleHeroCTA()"
+          class="group relative px-8 py-4 bg-white text-slate-900 rounded-xl font-bold text-lg overflow-hidden shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)] transition-all hover:scale-105">
+          <span class="relative z-10 flex items-center gap-2">Start Interview <i data-lucide="arrow-right"
+              class="w-5 h-5"></i></span>
+        </button>
+        <button onclick="
+              document
+                .getElementById('roadmap')
+                .scrollIntoView({ behavior: 'smooth' })
+            "
+          class="px-8 py-4 glass text-white rounded-xl font-semibold hover:bg-white/10 transition border border-white/10">
+          View Roadmap
+        </button>
+      </div>
+    </div>
+
+    <div class="absolute bottom-10 animate-bounce text-gray-400">
+      <i data-lucide="chevron-down" class="w-8 h-8"></i>
+    </div>
+  </header>
+
+  <section id="trust" class="py-12 border-y border-white/5 bg-[#0f172a]/80 backdrop-blur-sm">
+    <div class="max-w-7xl mx-auto px-6 text-center">
+      <p class="text-sm text-gray-400 uppercase tracking-widest mb-8 font-semibold">
+        Trusted by students aiming for
+      </p>
+      <div
+        class="flex flex-wrap justify-center gap-12 opacity-70 grayscale hover:grayscale-0 transition-all duration-500">
+        <h3 class="text-2xl font-bold text-white flex items-center gap-2">
+          <i data-lucide="chrome" class="w-6 h-6 text-blue-400"></i> Google
+        </h3>
+        <h3 class="text-2xl font-bold text-white flex items-center gap-2">
+          <i data-lucide="layout-grid" class="w-6 h-6 text-green-400"></i>
+          Microsoft
+        </h3>
+        <h3 class="text-2xl font-bold text-white flex items-center gap-2">
+          <i data-lucide="shopping-bag" class="w-6 h-6 text-yellow-400"></i>
+          Amazon
+        </h3>
+        <h3 class="text-2xl font-bold text-white flex items-center gap-2">
+          <i data-lucide="play-circle" class="w-6 h-6 text-red-500"></i>
+          Netflix
+        </h3>
+        <h3 class="text-2xl font-bold text-white flex items-center gap-2">
+          <i data-lucide="facebook" class="w-6 h-6 text-blue-600"></i> Meta
+        </h3>
+      </div>
+    </div>
+  </section>
+
+  <section id="features" class="py-24 relative overflow-hidden bg-[#0A0F1C] border-b border-white/5">
+    <div
+      class="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-900/10 via-[#0A0F1C] to-[#0A0F1C] pointer-events-none">
+    </div>
+    <div class="max-w-7xl mx-auto px-6 relative z-10">
+
+      <div class="text-center mb-16">
+        <div
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-sm text-indigo-300 mb-6 border border-indigo-500/30 font-semibold tracking-wide">
+          <i data-lucide="sparkles" class="w-4 h-4 text-indigo-400"></i> Platform Capabilities
+        </div>
+        <h2 class="text-4xl md:text-5xl font-black mb-6 text-white tracking-tight">
+          Everything You Need to <span
+            class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">Master
+            Interviews</span>
+        </h2>
+        <p class="text-gray-400 text-lg max-w-2xl mx-auto">
+          Our intelligent engine doesn't just read your answers. It listens to your voice, executes your code, analyzes
+          your logic, and forces you to grow.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <!-- Feature 1 -->
+        <div
+          class="glass-card p-8 rounded-3xl border border-white/5 flex flex-col group hover:border-indigo-500/30 transition-colors">
+          <div
+            class="w-14 h-14 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-400 mb-6 border border-indigo-500/20 group-hover:scale-110 transition-transform">
+            <i data-lucide="mic" class="w-7 h-7"></i>
+          </div>
+          <h3 class="text-2xl font-bold text-white mb-3">Conversational Voice AI</h3>
+          <p class="text-gray-400 leading-relaxed text-sm">
+            Experience real-time, fluid technical interviewing. Our engine uses the Web Speech API and Groq LLMs to
+            actively listen, interrupt, and push you on missing edge cases.
+          </p>
+        </div>
+
+        <!-- Feature 2 -->
+        <div
+          class="glass-card p-8 rounded-3xl border border-white/5 flex flex-col group hover:border-purple-500/30 transition-colors">
+          <div
+            class="w-14 h-14 bg-purple-500/10 rounded-2xl flex items-center justify-center text-purple-400 mb-6 border border-purple-500/20 group-hover:scale-110 transition-transform">
+            <i data-lucide="code-2" class="w-7 h-7"></i>
+          </div>
+          <h3 class="text-2xl font-bold text-white mb-3">Live Code Sandbox</h3>
+          <p class="text-gray-400 leading-relaxed text-sm">
+            Tackle algorithmic challenges in an integrated execution environment featuring a Cloudflare Monaco Editor.
+            Write, test, and debug while the AI observes your approach.
+          </p>
+        </div>
+
+        <!-- Feature 3 -->
+        <div
+          class="glass-card p-8 rounded-3xl border border-white/5 flex flex-col group hover:border-pink-500/30 transition-colors">
+          <div
+            class="w-14 h-14 bg-pink-500/10 rounded-2xl flex items-center justify-center text-pink-400 mb-6 border border-pink-500/20 group-hover:scale-110 transition-transform">
+            <i data-lucide="file-check-2" class="w-7 h-7"></i>
+          </div>
+          <h3 class="text-2xl font-bold text-white mb-3">Resume Intelligence</h3>
+          <p class="text-gray-400 leading-relaxed text-sm">
+            Don't just answer generic questions. Upload your CV and our parsing engine will forge tailored technical
+            questions based directly on your declared experiences and projects.
+          </p>
+        </div>
+
+        <!-- Feature 4 -->
+        <div
+          class="glass-card p-8 rounded-3xl border border-white/5 flex flex-col group hover:border-cyan-500/30 transition-colors">
+          <div
+            class="w-14 h-14 bg-cyan-500/10 rounded-2xl flex items-center justify-center text-cyan-400 mb-6 border border-cyan-500/20 group-hover:scale-110 transition-transform">
+            <i data-lucide="brain-circuit" class="w-7 h-7"></i>
+          </div>
+          <h3 class="text-2xl font-bold text-white mb-3">Deep AI Assessments</h3>
+          <p class="text-gray-400 leading-relaxed text-sm">
+            Quickly benchmark your raw problem-solving speed with our Deep AI cognitive and logical reasoning diagnostic
+            tests, comparing you to top candidates.
+          </p>
+        </div>
+
+        <!-- Feature 5 -->
+        <div
+          class="glass-card p-8 rounded-3xl border border-white/5 flex flex-col group hover:border-emerald-500/30 transition-colors">
+          <div
+            class="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400 mb-6 border border-emerald-500/20 group-hover:scale-110 transition-transform">
+            <i data-lucide="scale" class="w-7 h-7"></i>
+          </div>
+          <h3 class="text-2xl font-bold text-white mb-3">Say vs. Do Analysis</h3>
+          <p class="text-gray-400 leading-relaxed text-sm">
+            Advanced reasoning evaluations that compare your verbally declared approach to your actual written code. We
+            flag logical gaps instantly to keep you honest.
+          </p>
+        </div>
+
+        <!-- Feature 6 -->
+        <div
+          class="glass-card p-8 rounded-3xl border border-white/5 flex flex-col group hover:border-orange-500/30 transition-colors">
+          <div
+            class="w-14 h-14 bg-orange-500/10 rounded-2xl flex items-center justify-center text-orange-400 mb-6 border border-orange-500/20 group-hover:scale-110 transition-transform">
+            <i data-lucide="bar-chart-10" class="w-7 h-7"></i>
+          </div>
+          <h3 class="text-2xl font-bold text-white mb-3">Multi-Dimensional Scoring</h3>
+          <p class="text-gray-400 leading-relaxed text-sm">
+            Receive detailed, dynamic reports grading your Technical Accuracy, Logic, Communication Clarity, and Session
+            Integrity metrics post-interview.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Cross Promotion Advertisement -->
+  <section class="py-24 bg-[#0f172a] relative overflow-hidden">
+    <!-- Background Glow -->
+    <div
+      class="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-purple-600/10 blur-3xl rounded-full translate-y-1/2 pointer-events-none">
+    </div>
+
+    <div class="max-w-7xl mx-auto px-6 relative z-10">
+      <div
+        class="glass-card rounded-[40px] border border-blue-500/20 p-2 md:p-1 overflow-hidden shadow-2xl shadow-blue-900/20">
+        <div
+          class="bg-gradient-to-br from-[#1a2235] to-[#0f172a] rounded-[36px] p-8 md:p-12 flex flex-col lg:flex-row items-center gap-10">
+
+          <!-- App Icon & Visuals -->
+          <div class="lg:w-1/3 flex justify-center relative">
+            <div class="absolute inset-0 bg-blue-500/20 blur-[60px] rounded-full pointer-events-none"></div>
+            <!-- Applied squircle design, border, and glow to the logo -->
+            <img src="icon.png" alt="AI Tools Hub Logo"
+              class="w-48 h-48 md:w-64 md:h-64 object-cover rounded-3xl border-4 border-blue-500/50 shadow-[0_0_30px_rgba(59,130,246,0.5)] relative z-10 animate-float"
+              onerror="this.src='https://cdn-icons-png.flaticon.com/512/4712/4712009.png'">
+          </div>
+
+          <!-- Content -->
+          <div class="lg:w-2/3 text-center lg:text-left">
+            <div
+              class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/10 text-blue-400 text-xs font-bold mb-4 uppercase tracking-widest border border-blue-500/20">
+              <i data-lucide="zap" class="w-4 h-4"></i> v3.0 Now Live
+            </div>
+
+            <h2 class="text-3xl md:text-5xl font-black text-white mb-4 tracking-tight">
+              Supercharge your productivity with <br class="hidden lg:block" />
+              <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-purple-400">AI TOOLS
+                HUB</span>
+            </h2>
+
+            <!-- Updated description with v3.0 release notes -->
+            <div
+              class="text-gray-400 text-base md:text-lg mb-8 max-w-2xl mx-auto lg:mx-0 leading-relaxed text-left space-y-2">
+              <p class="font-semibold text-white">Hey everyone 👋 I’m excited to share that AI TOOLS HUB v3.0 is
+                officially live on the Google Play Store! 🚀</p>
+              <p>This massive update includes:</p>
+              <ul class="list-disc list-inside space-y-1 ml-2 text-sm md:text-base text-gray-300">
+                <li><span class="text-white font-medium">Doctor AI</span> with offline health & first aid support</li>
+                <li><span class="text-white font-medium">MockMentorAI</span> for interview practice</li>
+                <li>Improved AI chatbot & AI Playground</li>
+                <li>Image, Video & Voice AI tools</li>
+                <li>Better performance & stability</li>
+              </ul>
+              <p class="mt-4 italic">Would love to hear your feedback 🙌 — JJ.28</p>
+            </div>
+
+            <div class="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+              <!-- Replaced Lucide icon with an SVG for the official Google Play logo look -->
+              <a href="https://play.google.com/store/apps/details?id=thejcompany.netlify.app" target="_blank"
+                class="w-full sm:w-auto bg-white hover:bg-gray-100 text-black px-6 py-3 md:px-8 md:py-4 rounded-2xl font-bold flex items-center justify-center gap-3 transition-all shadow-lg hover:shadow-white/25 hover:-translate-y-1">
+                <svg viewBox="0 0 24 24" class="w-6 h-6 md:w-8 md:h-8" aria-hidden="true">
+                  <path fill="#4caf50"
+                    d="M3.609 1.814L13.792 12 3.61 22.186a1.986 1.986 0 01-.585-1.42V3.234c0-.528.21-.103.584-1.42z" />
+                  <path fill="#ffeb3b"
+                    d="M13.792 12l3.41-3.41L20.45 10.45a1.597 1.597 0 010 2.27l-3.248 1.86-3.41-3.41z" />
+                  <path fill="#f44336" d="M3.609 22.186L13.792 12l3.41 3.41-11.85 6.84a1.733 1.733 0 01-1.743-.064z" />
+                  <path fill="#2196f3"
+                    d="M3.609 1.814a1.733 1.733 0 011.743-.064L20.45 10.45a1.597 1.597 0 010 2.27l-2.003-3.46-4.655-4.656L3.609 1.814z" />
+                </svg>
+                <div class="text-left flex flex-col justify-center leading-tight">
+                  <span class="text-[10px] md:text-xs font-medium uppercase tracking-wider text-gray-700">Get it
+                    on</span>
+                  <span class="text-sm md:text-lg font-black tracking-tight">Google Play</span>
+                </div>
+              </a>
+
+              <!-- Enhanced Visit Website button -->
+              <a href="https://jjaitoolshub.netlify.app" target="_blank"
+                class="w-full sm:w-auto mt-2 sm:mt-0 glass text-white px-6 py-3 md:px-8 md:py-4 rounded-2xl font-bold flex items-center justify-center gap-3 hover:bg-white/10 transition-all border border-white/20 hover:border-white/40 shadow-[0_4px_14px_0_rgba(255,255,255,0.1)] hover:shadow-[0_6px_20px_rgba(255,255,255,0.15)] hover:-translate-y-1">
+                <i data-lucide="external-link" class="w-5 h-5 text-blue-400"></i>
+                <div class="text-left flex flex-col justify-center leading-tight">
+                  <span class="text-[10px] md:text-xs font-medium text-gray-300">Explore on Web</span>
+                  <span class="text-sm md:text-lg tracking-tight">Visit Official Site</span>
+                </div>
+              </a>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="roadmap" class="py-32 relative overflow-hidden">
+    <div
+      class="absolute top-0 left-0 w-full h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-[#0f172a] to-[#0f172a] -z-10">
+    </div>
+    <div class="absolute top-0 w-full h-px bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent"></div>
+
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center mb-20">
+        <div
+          class="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-sm text-purple-300 mb-6 border border-purple-500/30 font-semibold tracking-wide">
+          <i data-lucide="milestone" class="w-4 h-4 text-purple-400"></i> Platform Evolution
+        </div>
+        <h2 class="text-4xl md:text-6xl font-black mb-6 text-white tracking-tight">
+          Milestones & <span class="text-gradient">Future Vision</span>
+        </h2>
+        <p class="text-gray-400 text-lg max-w-3xl mx-auto leading-relaxed">
+          Transparency builds trust. Explore exactly what makes MockMentor the most advanced AI interview platform
+          today, and see where we are headed tomorrow.
+        </p>
+      </div>
+
+      <div class="relative max-w-5xl mx-auto">
+        <!-- Central Timeline Line -->
+        <div
+          class="hidden md:block absolute left-1/2 top-0 bottom-0 w-1 bg-gradient-to-b from-indigo-500 via-purple-500 to-pink-500 rounded-full opacity-30 transform -translate-x-1/2">
+        </div>
+
+        <!-- Milestone 1: Core Foundation (Completed) -->
+        <div class="relative flex flex-col md:flex-row items-center justify-between mb-16 group">
+          <div class="md:w-[45%] text-right pr-0 md:pr-12 mb-8 md:mb-0">
+            <div
+              class="glass-card p-8 rounded-3xl relative border border-green-500/30 shadow-[0_0_30px_rgba(34,197,94,0.1)] hover:shadow-[0_0_40px_rgba(34,197,94,0.2)] transition-shadow">
+              <span
+                class="inline-block px-3 py-1 bg-green-500/20 text-green-400 text-xs font-bold rounded-full mb-3 uppercase tracking-wider border border-green-500/30">Completed</span>
+              <h3 class="text-2xl font-bold mb-3 text-white">Foundation & Groq AI</h3>
+              <p class="text-gray-400 text-sm leading-relaxed mb-4">
+                Migrated to the lightning-fast <strong>Groq API (Llama-3.3-70b-versatile)</strong>. Built 12 specific
+                career tracks and introduced highly accurate, completely free basic text interviewing.
+              </p>
+              <ul class="text-left text-sm text-gray-500 space-y-2">
+                <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-green-500"></i>
+                  Cloudflare Monaco Code Editor</li>
+                <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-green-500"></i>
+                  Global Firebase Auth Setup</li>
+                <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-green-500"></i>
+                  In-App Help Desk Tutor</li>
+              </ul>
+            </div>
+          </div>
+          <div
+            class="hidden md:flex absolute left-1/2 transform -translate-x-1/2 w-12 h-12 rounded-full bg-[#0f172a] border-4 border-green-500 items-center justify-center z-10 shadow-[0_0_20px_rgba(34,197,94,0.5)]">
+            <i data-lucide="check" class="w-5 h-5 text-green-400"></i>
+          </div>
+          <div class="md:w-[45%] pl-0 md:pl-12 opacity-0 hidden md:block"></div>
+        </div>
+
+        <!-- Milestone 2: Multi-Dimensional Architecture (Completed) -->
+        <div class="relative flex flex-col md:flex-row items-center justify-between mb-16 group">
+          <div class="md:w-[45%] text-right pr-0 md:pr-12 mb-8 md:mb-0">
+            <div
+              class="glass-card p-8 rounded-3xl relative border border-indigo-500/40 shadow-[0_0_30px_rgba(99,102,241,0.15)] hover:shadow-[0_0_40px_rgba(99,102,241,0.3)] transition-shadow">
+              <span
+                class="inline-block px-3 py-1 bg-indigo-500/20 text-indigo-400 text-xs font-bold rounded-full mb-3 uppercase tracking-wider border border-indigo-500/30">Recently
+                Launched</span>
+              <h3 class="text-2xl font-bold mb-3 text-white">Multi-Dimensional Architecture</h3>
+              <p class="text-gray-400 text-sm leading-relaxed mb-4">
+                Achieved true interview realism. Integrated the Web Speech AI for fluid <strong>Conversational voice
+                  looping</strong> and built the revolutionary "Say vs. Do" gap analysis engine.
+              </p>
+              <ul class="text-left text-sm text-gray-500 space-y-2">
+                <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-indigo-400"></i>
+                  4-Pillar Scorecards (Tech, Logic, Comm, Integrity)</li>
+                <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-indigo-400"></i>
+                  Strict Anti-Cheat & Tab Monitoring</li>
+                <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-indigo-400"></i>
+                  3D Perspective Glowing UI System</li>
+              </ul>
+            </div>
+          </div>
+          <div
+            class="hidden md:flex absolute left-1/2 transform -translate-x-1/2 w-12 h-12 rounded-full bg-[#0f172a] border-4 border-indigo-500 items-center justify-center z-10 shadow-[0_0_20px_rgba(99,102,241,0.5)] group-hover:scale-110 transition-transform">
+            <i data-lucide="rocket" class="w-5 h-5 text-indigo-400"></i>
+          </div>
+          <div class="md:w-[45%] pl-0 md:pl-12 opacity-0 hidden md:block"></div>
+        </div>
+
+        <!-- Milestone 3: Deep AI & Resume Intelligence (Completed) -->
+        <div class="relative flex flex-col md:flex-row items-center justify-between mb-16 group">
+          <div class="md:w-[45%] text-right pr-0 md:pr-12 mb-8 md:mb-0">
+            <div
+              class="glass-card p-8 rounded-3xl relative border border-purple-500/40 shadow-[0_0_30px_rgba(168,85,247,0.15)] hover:shadow-[0_0_40px_rgba(168,85,247,0.3)] transition-shadow">
+              <span
+                class="inline-block px-3 py-1 bg-purple-500/20 text-purple-400 text-xs font-bold rounded-full mb-3 uppercase tracking-wider border border-purple-500/30">Recently
+                Launched</span>
+              <h3 class="text-2xl font-bold mb-3 text-white">Deep AI & Resume Parsing</h3>
+              <p class="text-gray-400 text-sm leading-relaxed mb-4">
+                Deployed standalone cognitive diagnostic testing environments and a serverless <strong>Netlify
+                  Backend</strong> to inject candidate resumes directly into the LLM system prompt.
+              </p>
+              <ul class="text-left text-sm text-gray-500 space-y-2">
+                <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-purple-400"></i>
+                  Logical & Cognitive Sandbox (10-Qs)</li>
+                <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-purple-400"></i>
+                  Real-time Firebase Dashboard Syncing</li>
+                <li class="flex items-center gap-2"><i data-lucide="check-circle-2" class="w-4 h-4 text-purple-400"></i>
+                  Bespoke Resume Extraction API</li>
+              </ul>
+            </div>
+          </div>
+          <div
+            class="hidden md:flex absolute left-1/2 transform -translate-x-1/2 w-12 h-12 rounded-full bg-[#0f172a] border-4 border-purple-500 items-center justify-center z-10 shadow-[0_0_20px_rgba(168,85,247,0.5)] group-hover:scale-110 transition-transform">
+            <i data-lucide="sparkles" class="w-5 h-5 text-purple-400 pt-[1px]"></i>
+          </div>
+          <div class="md:w-[45%] pl-0 md:pl-12 opacity-0 hidden md:block"></div>
+        </div>
+
+        <!-- Milestone 4: Corporate Hiring Integration (Future) -->
+        <div class="relative flex flex-col md:flex-row items-center justify-between group">
+          <div class="md:w-[45%] text-right pr-0 md:pr-12">
+            <div
+              class="glass-card p-8 rounded-3xl relative border border-dashed border-pink-500/30 bg-[#0f172a]/40 group-hover:bg-[#0f172a]/60 transition-colors">
+              <span
+                class="inline-block px-3 py-1 bg-slate-800 text-gray-400 text-xs font-bold rounded-full mb-3 uppercase tracking-wider border border-slate-700">In
+                Development (Late 2026)</span>
+              <h3 class="text-2xl font-bold mb-3 text-white">B2B Corporate Hiring APIs</h3>
+              <p class="text-gray-400 text-sm leading-relaxed">
+                We are building <strong>MockMentor Business</strong>. Startups and enterprise companies will be able to
+                upload custom problem sets. Candidate applications will trigger automated, uncheatable AI prescreening
+                interviews, generating ranked scoreboards for HR before a human ever steps in.
+              </p>
+            </div>
+          </div>
+          <div
+            class="hidden md:flex absolute left-1/2 transform -translate-x-1/2 w-12 h-12 rounded-full bg-[#0f172a] border-4 border-dashed border-pink-500 items-center justify-center z-10 opacity-50">
+            <i data-lucide="clock" class="w-5 h-5 text-pink-500"></i>
+          </div>
+          <div class="md:w-[45%] pl-0 md:pl-12 opacity-0 hidden md:block"></div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section id="pricing" class="py-24 border-t border-white/5 relative">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="text-center mb-16">
+        <h2 class="text-3xl md:text-5xl font-bold mb-4 text-white">
+          Choose Your <span class="text-gradient">Path</span>
+        </h2>
+        <p class="text-gray-400">
+          Flexible plans for students and institutions.
+        </p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <!-- Free -->
+        <div class="glass-card p-8 rounded-3xl border border-white/5 flex flex-col">
+          <h3 class="text-xl font-bold text-gray-300">Aspirant</h3>
+          <div class="mt-4 mb-6">
+            <span class="text-4xl font-bold">Free</span>
+          </div>
+          <ul class="space-y-4 mb-8 text-sm text-gray-400 flex-1">
+            <li class="flex gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-green-400"></i> 5
+              Interviews / Month
+            </li>
+            <li class="flex gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-green-400"></i> Basic
+              AI Feedback
+            </li>
+          </ul>
+          <button onclick="handlePlanClick('free')"
+            class="w-full py-3 rounded-xl border border-white/10 hover:bg-white/5 transition font-semibold text-gray-300">
+            Get Started
+          </button>
+        </div>
+
+        <!-- Pro -->
+        <div
+          class="glass-card p-8 rounded-3xl border border-indigo-500/50 flex flex-col relative transform md:-translate-y-4 shadow-2xl shadow-indigo-500/20">
+          <div class="absolute top-0 right-0 bg-indigo-600 text-white text-xs font-bold px-3 py-1 rounded-bl-xl">
+            POPULAR
+          </div>
+          <h3 class="text-xl font-bold text-white">Pro Achiever</h3>
+          <div class="mt-4 mb-6">
+            <span class="text-4xl font-bold text-indigo-400">$9</span><span class="text-gray-500">/mo</span>
+          </div>
+          <ul class="space-y-4 mb-8 text-sm text-gray-300 flex-1">
+            <li class="flex gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-indigo-400"></i>
+              Unlimited Interviews
+            </li>
+            <li class="flex gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-indigo-400"></i> Deep
+              Analysis
+            </li>
+          </ul>
+          <button onclick="handlePlanClick('pro')"
+            class="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 transition font-bold text-white">
+            Upgrade Now
+          </button>
+        </div>
+
+        <!-- Org -->
+        <div class="glass-card p-8 rounded-3xl border border-purple-500/30 flex flex-col">
+          <h3 class="text-xl font-bold text-purple-200">Institute</h3>
+          <div class="mt-4 mb-6">
+            <span class="text-4xl font-bold text-purple-400">$49</span><span class="text-gray-500">/mo</span>
+          </div>
+          <ul class="space-y-4 mb-8 text-sm text-gray-400 flex-1">
+            <li class="flex gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-purple-400"></i> Bulk
+              Student Mgmt
+            </li>
+            <li class="flex gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-purple-400"></i>
+              Analytics Dashboard
+            </li>
+          </ul>
+          <button onclick="handlePlanClick('org')"
+            class="w-full py-3 rounded-xl bg-purple-600/20 border border-purple-500/50 hover:bg-purple-600/30 text-purple-300 transition font-bold">
+            Contact Sales
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="business" class="py-24 bg-[#0b1121]">
+    <div class="max-w-7xl mx-auto px-6">
+      <div class="flex flex-col md:flex-row gap-12 items-center">
+        <div class="flex-1">
+          <h2 class="text-4xl font-bold mb-6 text-white">
+            Sustainable <span class="text-gradient">Business Model</span>
+          </h2>
+          <div class="space-y-6">
+            <div class="flex gap-4">
+              <div class="p-3 bg-indigo-500/10 rounded-xl h-fit">
+                <i data-lucide="users" class="text-indigo-400"></i>
+              </div>
+              <div>
+                <h4 class="text-xl font-bold text-white">B2C Freemium</h4>
+                <p class="text-gray-400 text-sm mt-1">
+                  Students get 5 free interviews/month. Pro plan ($9/mo)
+                  unlocks unlimited practice, deep analytics, and resume
+                  parsing.
+                </p>
+              </div>
+            </div>
+            <div class="flex gap-4">
+              <div class="p-3 bg-purple-500/10 rounded-xl h-fit">
+                <i data-lucide="building-2" class="text-purple-400"></i>
+              </div>
+              <div>
+                <h4 class="text-xl font-bold text-white">B2B Recruitment</h4>
+                <p class="text-gray-400 text-sm mt-1">
+                  Colleges and Companies pay per-candidate for automated L1
+                  technical screening, saving 400+ HR hours annually.
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex-1 relative">
+          <div class="absolute inset-0 bg-gradient-to-r from-indigo-500 to-purple-600 rounded-3xl blur-3xl opacity-10">
+          </div>
+          <div class="glass p-8 rounded-3xl relative border border-white/10">
+            <div class="flex justify-between items-center mb-8">
+              <h3 class="font-bold text-white">Revenue Projection</h3>
+              <span class="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded border border-green-500/20">+240%
+                YoY</span>
+            </div>
+            <div class="flex items-end gap-4 h-48">
+              <div
+                class="w-1/4 bg-slate-700/50 rounded-t-lg h-[30%] relative group hover:bg-slate-600 transition-colors">
+                <div
+                  class="absolute -top-8 left-0 w-full text-center text-xs opacity-0 group-hover:opacity-100 text-white bg-slate-800 px-1 py-1 rounded transition-opacity">
+                  $10k
+                </div>
+              </div>
+              <div
+                class="w-1/4 bg-slate-700/50 rounded-t-lg h-[50%] relative group hover:bg-slate-600 transition-colors">
+                <div
+                  class="absolute -top-8 left-0 w-full text-center text-xs opacity-0 group-hover:opacity-100 text-white bg-slate-800 px-1 py-1 rounded transition-opacity">
+                  $45k
+                </div>
+              </div>
+              <div
+                class="w-1/4 bg-indigo-500/50 rounded-t-lg h-[75%] relative group hover:bg-indigo-500/70 transition-colors">
+                <div
+                  class="absolute -top-8 left-0 w-full text-center text-xs opacity-0 group-hover:opacity-100 text-white bg-indigo-900 px-1 py-1 rounded transition-opacity">
+                  $120k
+                </div>
+              </div>
+              <div
+                class="w-1/4 bg-indigo-500 rounded-t-lg h-[95%] relative group hover:bg-indigo-400 transition-colors">
+                <div
+                  class="absolute -top-8 left-0 w-full text-center text-xs opacity-0 group-hover:opacity-100 text-white bg-indigo-900 px-1 py-1 rounded transition-opacity">
+                  $500k
+                </div>
+              </div>
+            </div>
+            <div class="flex justify-between text-xs text-gray-400 mt-4 font-mono">
+              <span>2025</span><span>2026</span><span>2027</span><span>2028</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Feedback / Contact Section (3D Scroll Effect) -->
+  <section id="contact"
+    class="py-24 px-6 md:px-12 lg:px-24 bg-[#0B1120] border-t border-white/5 relative overflow-hidden tilt-container"
+    style="perspective: 1000px;">
+    <!-- Background Elements -->
+    <div class="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+    <div class="absolute bottom-0 left-0 w-96 h-96 bg-cyan-500/10 rounded-full blur-[120px] pointer-events-none"></div>
+
+    <div class="max-w-4xl mx-auto relative z-10 w-full">
+      <div class="tilt-header text-center mb-16 transition-transform duration-300 ease-out z-20 relative">
+        <h2 class="text-4xl md:text-5xl font-black mb-6 tracking-tight">
+          Have Feedback? <br />
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">Let's Build the
+            Future</span>
+        </h2>
+        <p class="text-lg text-gray-400 max-w-2xl mx-auto leading-relaxed">
+          Want to suggest a new feature? Found a bug? Or just want to say hi? Drop us a message directly. We read every
+          single one.
+        </p>
+      </div>
+
+      <div
+        class="tilt-card max-w-5xl mx-auto w-full border-4 border-[#333] p-2 md:p-6 bg-[#222222] rounded-[30px] shadow-2xl z-10 relative origin-bottom will-change-transform">
+        <div
+          class="h-full w-full overflow-hidden rounded-2xl bg-slate-900 border border-white/5 md:rounded-2xl p-6 md:p-8">
+          <!-- Web3Forms Integration -->
+          <form action="https://api.web3forms.com/submit" method="POST" class="space-y-6">
+            <input type="hidden" name="access_key" value="04ae9ad5-7457-4f31-9d82-51f6dc9e9f6a">
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="space-y-2">
+                <label for="name" class="block text-sm font-semibold text-gray-300">Your Name</label>
+                <input type="text" name="name" id="name" required placeholder="John Doe"
+                  class="w-full bg-slate-800/80 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" />
+              </div>
+              <div class="space-y-2">
+                <label for="email" class="block text-sm font-semibold text-gray-300">Email Address</label>
+                <input type="email" name="email" id="email" required placeholder="john@example.com"
+                  class="w-full bg-slate-800/80 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition" />
+              </div>
+            </div>
+
+            <div class="space-y-2">
+              <label for="message" class="block text-sm font-semibold text-gray-300">Your Message / Feedback</label>
+              <textarea name="message" id="message" required rows="5"
+                placeholder="I would love to see a feature where..."
+                class="w-full bg-slate-800/80 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition resize-none"></textarea>
+            </div>
+
+            <input type="checkbox" name="botcheck" class="hidden" style="display: none;">
+
+            <button type="submit"
+              class="w-full bg-gradient-to-r from-indigo-600 to-cyan-600 hover:from-indigo-500 hover:to-cyan-500 text-white font-bold py-4 px-8 rounded-xl transition shadow-[0_0_20px_rgba(99,102,241,0.4)] hover:shadow-[0_0_30px_rgba(99,102,241,0.6)] flex items-center justify-center gap-2 transform hover:-translate-y-1">
+              Send Message <i data-lucide="send" class="w-5 h-5"></i>
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="py-8 border-t border-white/5 text-center text-gray-500 text-sm bg-[#0f172a]">
+    <p>&copy; 2026 MockMentor AI. Built with ❤️ By Jai Jadhav (JJ.28).</p>
+  </footer>
+
+  <div id="authModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div
+      class="glass-modal w-full max-w-md p-8 rounded-3xl shadow-2xl relative overflow-hidden border border-indigo-500/30">
+      <button onclick="closeAuthModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white transition">
+        <i data-lucide="x"></i>
+      </button>
+
+      <div class="flex justify-center mb-6">
+        <div
+          class="relative w-32 h-24 bg-indigo-500 rounded-t-full flex justify-center items-center gap-4 pt-4 shadow-[0_0_40px_rgba(99,102,241,0.5)] transition-colors duration-300"
+          id="characterBody">
+          <div class="eye">
+            <div class="pupil" id="pupilL"></div>
+            <div class="eyelid"></div>
+          </div>
+          <div class="eye">
+            <div class="pupil" id="pupilR"></div>
+            <div class="eyelid"></div>
+          </div>
+        </div>
+      </div>
+
+      <h2 id="modalTitle" class="text-2xl font-bold text-center mb-2 text-white">
+        Welcome Back!
+      </h2>
+      <p id="modalSub" class="text-gray-400 text-center text-sm mb-6">
+        Login to access your dashboard.
+      </p>
+
+      <form id="authForm" onsubmit="handleAuth(event)" class="space-y-4">
+        <div id="nameField" class="hidden space-y-1">
+          <label class="text-xs font-semibold text-gray-400 ml-1">Full Name</label>
+          <input type="text" id="inpName"
+            class="w-full bg-slate-800/50 border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-indigo-500 transition text-white"
+            placeholder="John Doe" />
+        </div>
+        <div class="space-y-1">
+          <label class="text-xs font-semibold text-gray-400 ml-1">Email</label>
+          <input type="email" id="inpEmail" required
+            class="w-full bg-slate-800/50 border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-indigo-500 transition text-white"
+            placeholder="you@example.com" />
+        </div>
+        <div class="space-y-1">
+          <div class="flex justify-between items-center ml-1">
+            <label class="text-xs font-semibold text-gray-400">Password</label>
+            <button type="button" onclick="handleForgotPassword()"
+              class="text-[10px] text-indigo-400 hover:text-indigo-300 hover:underline">
+              Forgot Password?
+            </button>
+          </div>
+          <input type="password" id="inpPass" required
+            class="w-full bg-slate-800/50 border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-indigo-500 transition text-white"
+            placeholder="••••••••" />
+        </div>
+        <button type="submit" id="btnSubmit"
+          class="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-bold transition shadow-lg shadow-indigo-500/20 mt-2">
+          Log In
+        </button>
+      </form>
+
+      <div class="relative my-6 text-center">
+        <div class="absolute inset-0 flex items-center">
+          <div class="w-full border-t border-white/10"></div>
+        </div>
+        <span class="relative bg-[#0f172a] px-2 text-xs text-gray-500 uppercase">Or continue with</span>
+      </div>
+
+      <button onclick="handleGoogleLogin()"
+        class="w-full bg-white text-slate-900 py-3 rounded-xl font-bold transition hover:bg-gray-100 flex items-center justify-center gap-2">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-5 h-5" />
+        Google
+      </button>
+
+      <p class="text-center text-sm text-gray-400 mt-6">
+        <span id="toggleText">Don't have an account?</span>
+        <button onclick="toggleAuthMode()" class="text-indigo-400 hover:underline font-semibold ml-1" id="toggleBtn">
+          Sign Up
+        </button>
+      </p>
+    </div>
+  </div>
+
+  <!-- UPI / Construction Modal -->
+  <div id="upiModal"
+    class="fixed inset-0 z-[60] bg-slate-900/95 backdrop-blur-xl hidden flex flex-col items-center justify-center p-6">
+    <div class="max-w-md w-full glass p-8 rounded-3xl text-center border border-yellow-500/30 relative overflow-hidden">
+      <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-yellow-500 to-transparent">
+      </div>
+      <div
+        class="w-16 h-16 bg-yellow-500/10 rounded-full flex items-center justify-center mx-auto mb-6 text-yellow-400">
+        <i data-lucide="hammer" class="w-8 h-8"></i>
+      </div>
+      <h2 class="text-2xl font-bold mb-2 text-white">Under Construction</h2>
+      <p class="text-gray-400 mb-6">
+        We are currently integrating UPI & Secure Payment Gateways. This
+        feature will be live soon!
+      </p>
+
+      <div class="grid grid-cols-3 gap-4 mb-8 opacity-50">
+        <div class="p-2 bg-white/5 rounded-lg flex items-center justify-center">
+          <span class="text-xs font-bold">UPI</span>
+        </div>
+        <div class="p-2 bg-white/5 rounded-lg flex items-center justify-center">
+          <span class="text-xs font-bold">GPay</span>
+        </div>
+        <div class="p-2 bg-white/5 rounded-lg flex items-center justify-center">
+          <span class="text-xs font-bold">Card</span>
+        </div>
+      </div>
+
+      <button onclick="document.getElementById('upiModal').classList.add('hidden')"
+        class="px-6 py-3 bg-white/10 hover:bg-white/20 rounded-xl font-semibold transition w-full">
+        Got it
+      </button>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      auth,
+      provider,
+      signInWithPopup,
+      db,
+      doc,
+      getDoc,
+      setDoc,
+      updateDoc,
+      createUserWithEmailAndPassword,
+      signInWithEmailAndPassword,
+      updateProfile,
+      sendPasswordResetEmail,
+      onAuthStateChanged,
+      signOut,
+    } from "./firebase-config.js";
+    lucide.createIcons();
+
+    /* =========================================
+         NEURAL BACKGROUND ANIMATION (Converted to Vanilla JS)
+         ========================================= */
+    const canvas = document.getElementById("neuralCanvas");
+    const container = document.body;
+    const ctx = canvas.getContext("2d");
+
+    let width, height;
+    let particles = [];
+    let mouse = { x: -1000, y: -1000 };
+
+    // Config
+    const color = "rgb(99, 102, 241)"; // Indigo-500
+    const particleCount = 600;
+    const speed = 1;
+
+    class Particle {
+      constructor() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.vx = 0;
+        this.vy = 0;
+        this.age = 0;
+        this.life = Math.random() * 200 + 100;
+      }
+
+      update() {
+        // Flow field math
+        const angle =
+          (Math.cos(this.x * 0.005) + Math.sin(this.y * 0.005)) * Math.PI;
+        this.vx += Math.cos(angle) * 0.2 * speed;
+        this.vy += Math.sin(angle) * 0.2 * speed;
+
+        // Mouse repulsion
+        const dx = mouse.x - this.x;
+        const dy = mouse.y - this.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance < 150) {
+          const force = (150 - distance) / 150;
+          this.vx -= dx * force * 0.05;
+          this.vy -= dy * force * 0.05;
+        }
+
+        this.x += this.vx;
+        this.y += this.vy;
+        this.vx *= 0.95; // Friction
+        this.vy *= 0.95;
+
+        this.age++;
+        if (this.age > this.life) {
+          this.reset();
+        }
+
+        // Wrap
+        if (this.x < 0) this.x = width;
+        if (this.x > width) this.x = 0;
+        if (this.y < 0) this.y = height;
+        if (this.y > height) this.y = 0;
+      }
+
+      reset() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.vx = 0;
+        this.vy = 0;
+        this.age = 0;
+        this.life = Math.random() * 200 + 100;
+      }
+
+      draw() {
+        ctx.fillStyle = color;
+        const alpha = 1 - Math.abs(this.age / this.life - 0.5) * 2;
+        ctx.globalAlpha = alpha;
+        ctx.fillRect(this.x, this.y, 1.5, 1.5);
+      }
+    }
+
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+
+    function init() {
+      resize();
+      particles = [];
+      for (let i = 0; i < particleCount; i++) {
+        particles.push(new Particle());
+      }
+    }
+
+    function animate() {
+      // Trail Effect: Draw semi-transparent background color instead of clearRect
+      ctx.fillStyle = "rgba(15, 23, 42, 0.15)"; // #0f172a with opacity
+      ctx.fillRect(0, 0, width, height);
+
+      particles.forEach((p) => {
+        p.update();
+        p.draw();
+      });
+      requestAnimationFrame(animate);
+    }
+
+    window.addEventListener("resize", () => {
+      resize();
+      init();
+    });
+    window.addEventListener("mousemove", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = e.clientX - rect.left;
+      mouse.y = e.clientY - rect.top;
+    });
+
+    init();
+    animate();
+
+    // --- GLOBAL AUTH STATE ---
+    let currentUser = null;
+    onAuthStateChanged(auth, async (user) => {
+      currentUser = user;
+      const navContainer = document.getElementById("authNavContainer");
+
+      if (user) {
+        // User is logged in
+        let profilePicHtml = `<div class="w-10 h-10 rounded-full bg-indigo-600 flex items-center justify-center text-white font-bold border-2 border-white/10">${user.displayName ? user.displayName.charAt(0) : "U"}</div>`;
+        if (user.photoURL) {
+          profilePicHtml = `<div class="w-10 h-10 rounded-full bg-slate-700 bg-cover bg-center border-2 border-white/10" style="background-image: url('${user.photoURL}')"></div>`;
+        }
+
+        navContainer.innerHTML = `
+                    <button onclick="window.location.href='dashboard.html'" class="hidden md:flex bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/50 px-4 py-1.5 md:px-5 md:py-2 text-sm md:text-base rounded-xl font-semibold transition items-center gap-2">
+                        Dashboard <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+                    </button>
+                    ${profilePicHtml}
+                    <button onclick="handleLogout()" class="p-2 hover:bg-red-500/10 rounded-lg text-gray-400 hover:text-red-400 transition" title="Logout">
+                        <i data-lucide="log-out" class="w-5 h-5"></i>
+                    </button>
+                `;
+      } else {
+        // User is logged out
+        navContainer.innerHTML = `
+                    <button onclick="openAuthModal()"
+                        class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-1.5 md:px-6 md:py-2 text-sm md:text-base rounded-xl font-semibold transition shadow-lg hover:shadow-indigo-500/25">Login</button>
+                `;
+      }
+      lucide.createIcons();
+    });
+
+    window.handleHeroCTA = () => {
+      if (currentUser) {
+        window.location.href = "dashboard.html";
+      } else {
+        openAuthModal();
+      }
+    };
+
+    window.handleLogout = () => {
+      signOut(auth)
+        .then(() => {
+          // Will automatically trigger onAuthStateChanged and update UI
+          console.log("Logged out successfully");
+        })
+        .catch((error) => {
+          console.error("Logout error", error);
+        });
+    };
+
+    // --- AUTH & UI LOGIC (Preserved) ---
+    let isSignup = false;
+    window.openAuthModal = () =>
+      document.getElementById("authModal").classList.add("active");
+    window.closeAuthModal = () =>
+      document.getElementById("authModal").classList.remove("active");
+
+    window.toggleAuthMode = () => {
+      isSignup = !isSignup;
+      const nameField = document.getElementById("nameField");
+      const title = document.getElementById("modalTitle");
+      const btn = document.getElementById("btnSubmit");
+      const toggleText = document.getElementById("toggleText");
+      const toggleBtn = document.getElementById("toggleBtn");
+      const character = document.getElementById("characterBody");
+
+      if (isSignup) {
+        nameField.classList.remove("hidden");
+        title.innerText = "Create Account";
+        btn.innerText = "Sign Up";
+        toggleText.innerText = "Already have an account?";
+        toggleBtn.innerText = "Log In";
+        character.classList.replace("bg-indigo-500", "bg-purple-500");
+      } else {
+        nameField.classList.add("hidden");
+        title.innerText = "Welcome Back!";
+        btn.innerText = "Log In";
+        toggleText.innerText = "Don't have an account?";
+        toggleBtn.innerText = "Sign Up";
+        character.classList.replace("bg-purple-500", "bg-indigo-500");
+      }
+    };
+
+    window.handleForgotPassword = async () => {
+      const email = document.getElementById("inpEmail").value;
+      if (!email) {
+        alert("Please enter your email address in the Email field first.");
+        document.getElementById("inpEmail").focus();
+        return;
+      }
+      try {
+        await sendPasswordResetEmail(auth, email);
+        alert("Password reset link sent! Please check your inbox.");
+      } catch (error) {
+        alert("Error sending reset email: " + error.message);
+      }
+    };
+
+    window.handleAuth = async (e) => {
+      e.preventDefault();
+      const email = document.getElementById("inpEmail").value;
+      const pass = document.getElementById("inpPass").value;
+      const name = document.getElementById("inpName").value;
+      const btn = document.getElementById("btnSubmit");
+
+      try {
+        btn.innerText = "Processing...";
+        let user;
+        if (isSignup) {
+          const result = await createUserWithEmailAndPassword(
+            auth,
+            email,
+            pass,
+          );
+          user = result.user;
+          await updateProfile(user, { displayName: name });
+          await setDoc(doc(db, "users", user.uid), {
+            name: name,
+            email: email,
+            photo: null,
+            interviewsCompleted: 0,
+            totalScore: 0,
+            practiceMinutes: 0,
+          });
+        } else {
+          const result = await signInWithEmailAndPassword(auth, email, pass);
+          user = result.user;
+        }
+        window.location.href = "dashboard.html";
+      } catch (error) {
+        alert("Error: " + error.message);
+        btn.innerText = isSignup ? "Sign Up" : "Log In";
+      }
+    };
+
+    window.handleGoogleLogin = async () => {
+      try {
+        const result = await signInWithPopup(auth, provider);
+        const user = result.user;
+        const userRef = doc(db, "users", user.uid);
+        const userSnap = await getDoc(userRef);
+        if (!userSnap.exists()) {
+          await setDoc(userRef, {
+            name: user.displayName,
+            email: user.email,
+            photo: user.photoURL,
+            interviewsCompleted: 0,
+            totalScore: 0,
+            practiceMinutes: 0,
+          });
+        }
+        window.location.href = "dashboard.html";
+      } catch (error) {
+        alert("Login Error: " + error.message);
+      }
+    };
+
+    // --- EYE TRACKING ---
+    document.addEventListener("mousemove", (e) => {
+      const pupils = [
+        document.getElementById("pupilL"),
+        document.getElementById("pupilR"),
+      ];
+      pupils.forEach((pupil) => {
+        if (!pupil) return;
+        const rect = pupil.parentElement.getBoundingClientRect();
+        const x = rect.left + rect.width / 2;
+        const y = rect.top + rect.height / 2;
+        const dx = e.clientX - x;
+        const dy = e.clientY - y;
+        const angle = Math.atan2(dy, dx);
+        const dist = Math.min(5, Math.hypot(dx, dy) / 15);
+        pupil.style.transform = `translate(${Math.cos(angle) * dist}px, ${Math.sin(angle) * dist}px)`;
+      });
+    });
+
+    const passInput = document.getElementById("inpPass");
+    passInput.addEventListener("focus", () =>
+      document
+        .querySelectorAll(".pupil")
+        .forEach((p) => (p.style.transform = "translate(0, 5px)")),
+    );
+    passInput.addEventListener("blur", () =>
+      document
+        .querySelectorAll(".pupil")
+        .forEach((p) => (p.style.transform = "translate(0, 0)")),
+    );
+
+    // --- PLAN & SLOGAN LOGIC ---
+    window.handlePlanClick = (plan) => {
+      if (!currentUser) {
+        openAuthModal();
+        return;
+      }
+      if (plan === "free") {
+        window.location.href = "dashboard.html";
+      } else if (plan === "pro") {
+        const options = {
+          key: "rzp_test_SKfIQ5a3SW1fi2", // Test API Key
+          amount: "80000", // Amount is in currency subunits (9 USD ~ 800 INR * 100 paise)
+          currency: "INR",
+          name: "MockMentor AI",
+          description: "Pro Achiever Subscription",
+          image: "favicon.svg",
+          handler: async function (response) {
+            alert(
+              "Payment Successful! Payment ID: " +
+              response.razorpay_payment_id +
+              "\n\nYour account is now upgraded to Pro Achiever.",
+            );
+            if (currentUser) {
+              try {
+                await updateDoc(doc(db, "users", currentUser.uid), {
+                  plan: "Pro",
+                });
+              } catch (e) {
+                console.error("Plan update failed", e);
+              }
+            }
+            window.location.href = "dashboard.html";
+          },
+          prefill: {
+            name: currentUser.displayName || "User",
+            email: currentUser.email || "",
+          },
+          theme: {
+            color: "#4f46e5", // Indigo 600
+          },
+        };
+        const rzp1 = new window.Razorpay(options);
+        rzp1.open();
+      } else {
+        alert(`Redirecting to sales team for the ${plan} Plan...`);
+      }
+    };
+  </script>
+</body>
+
+</html>
