@@ -3,6 +3,7 @@ import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 // Screens
+import HomeScreen from './src/screens/HomeScreen';
 import InterviewScreen from './src/screens/InterviewScreen';
 import ReportScreen from './src/screens/ReportScreen';
 import { InterviewProvider } from './src/context/InterviewContext';
@@ -14,12 +15,13 @@ export default function App() {
     <InterviewProvider>
       <NavigationContainer theme={DarkTheme}>
         <Stack.Navigator
-          initialRouteName="Interview"
+          initialRouteName="Home"
           screenOptions={{
             headerShown: false,
             contentStyle: { backgroundColor: '#0f172a' } // Dark theme background matching legacy UI
           }}
         >
+          <Stack.Screen name="Home" component={HomeScreen} />
           <Stack.Screen name="Interview" component={InterviewScreen} />
           <Stack.Screen name="Report" component={ReportScreen} />
         </Stack.Navigator>
