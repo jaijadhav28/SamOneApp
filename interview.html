@@ -1,0 +1,835 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Interview Room - MockMentor</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="manifest" href="manifest.json" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    window.onerror = function (msg, url, lineNo, columnNo, error) {
+      const errDiv = document.createElement('div');
+      errDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;background:red;color:white;z-index:9999;padding:10px;font-family:monospace;white-space:pre-wrap;';
+      errDiv.innerText = `Error: ${msg}\nLine: ${lineNo}\nCol: ${columnNo}\nStack: ${error ? error.stack : ''}`;
+      document.body.appendChild(errDiv);
+      return false;
+    };
+    window.addEventListener('unhandledrejection', function (event) {
+      const errDiv = document.createElement('div');
+      errDiv.style.cssText = 'position:fixed;top:0;left:0;right:0;background:orange;color:white;z-index:9999;padding:10px;font-family:monospace;white-space:pre-wrap;';
+      errDiv.innerText = `Unhandled Promise Rejection: ${event.reason}`;
+      document.body.appendChild(errDiv);
+    });
+  </script>
+
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=JetBrains+Mono:wght@400;700&display=swap");
+
+    body {
+      background-color: #0f172a;
+      color: white;
+      font-family: "Inter", sans-serif;
+      overflow: hidden;
+      /* Prevents full page scroll */
+    }
+
+    /* Glassmorphism */
+    .glass {
+      background: rgba(30, 41, 59, 0.7);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    /* Chat Bubbles */
+    .bubble-ai {
+      background: rgba(99, 102, 241, 0.15);
+      /* Indigo tint */
+      border-left: 3px solid #6366f1;
+      border-radius: 4px 16px 16px 16px;
+    }
+
+    .bubble-user {
+      background: rgba(168, 85, 247, 0.15);
+      /* Purple tint */
+      border-right: 3px solid #a855f7;
+      border-radius: 16px 4px 16px 16px;
+      margin-left: auto;
+    }
+
+    /* Animation */
+    @keyframes pulse-ring {
+      0% {
+        transform: scale(0.8);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+      }
+
+      70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+      }
+
+      100% {
+        transform: scale(0.8);
+        box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+      }
+    }
+
+    .mic-active {
+      animation: pulse-ring 1.5s infinite;
+      background-color: #ef4444 !important;
+      /* Red when recording */
+      border-color: #ef4444 !important;
+    }
+
+    .animate-fade-in {
+      animation: fadeIn 0.4s ease-out forwards;
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Custom Scrollbar for Chat & Editor */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
+    }
+  </style>
+</head>
+
+<body class="h-[100dvh] flex flex-col relative">
+  <canvas id="neuralCanvas" class="fixed top-0 left-0 w-full h-full -z-10"></canvas>
+
+  <header class="glass h-14 flex-none flex items-center justify-between px-4 md:px-6 z-50 shadow-lg">
+    <div class="flex items-center gap-2 md:gap-3">
+      <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+      <span class="font-bold text-sm md:text-lg tracking-wide truncate max-w-[120px] md:max-w-none"
+        id="domainTitle">Interview</span>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2 bg-slate-800/80 px-2 py-1 rounded-lg border border-white/5">
+        <i data-lucide="timer" class="w-3 h-3 md:w-4 md:h-4 text-gray-400"></i>
+        <span id="timer" class="font-mono text-xs md:text-sm">00:00</span>
+      </div>
+      <button onclick="endInterview()"
+        class="bg-red-500/10 hover:bg-red-500/20 text-red-400 px-3 py-1.5 rounded-lg text-xs md:text-sm font-semibold transition border border-red-500/20 whitespace-nowrap">
+        End
+      </button>
+    </div>
+  </header>
+
+  <main class="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+    <!-- LEFT SIDE: Code Editor -->
+    <section class="flex-1 md:w-3/5 flex flex-col md:border-r border-white/10 relative overflow-hidden bg-[#1e1e1e]">
+      <div class="h-10 bg-[#2d2d2d] border-b border-black flex items-center px-4 justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="code" class="w-4 h-4 text-emerald-400"></i>
+          <span class="text-xs font-mono text-gray-300">solution.js</span>
+        </div>
+        <button onclick="runCode()"
+          class="bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 px-3 py-1 rounded-md border border-emerald-500/20 text-xs font-semibold flex items-center gap-1 transition">
+          <i data-lucide="play" class="w-3 h-3"></i> Run
+        </button>
+      </div>
+      <div id="editor" class="flex-1 w-full h-full"></div>
+
+      <!-- Terminal Output -->
+      <div id="terminalArea"
+        class="h-32 bg-[#1e1e1e] border-t border-[#333] font-mono text-xs p-3 overflow-y-auto hidden">
+        <div class="text-gray-500 mb-1">$ Output:</div>
+        <div id="runOutput" class="text-gray-300 whitespace-pre-wrap"></div>
+      </div>
+    </section>
+
+    <!-- RIGHT SIDE: Video & Transcript -->
+    <section class="h-[60vh] md:h-full md:w-2/5 flex flex-col bg-slate-900 border-t md:border-t-0 border-white/10 z-20">
+      <!-- Video Feeds Section (Top Half of Right Section) -->
+      <div class="h-[45%] border-b border-white/10 relative bg-black flex flex-col group overflow-hidden">
+        <!-- AI Video Simulation / Placeholder -->
+        <div class="flex-1 relative flex items-center justify-center bg-slate-900 overflow-hidden">
+          <div class="absolute inset-0 bg-gradient-to-t from-slate-900 to-transparent z-10 opacity-80"></div>
+          <div
+            class="w-20 h-20 rounded-full bg-gradient-to-br from-indigo-500 to-cyan-500 flex items-center justify-center shadow-[0_0_30px_rgba(99,102,241,0.5)] z-20">
+            <i data-lucide="bot" class="text-white w-10 h-10"></i>
+          </div>
+          <div id="aiStatus"
+            class="absolute bottom-2 left-3 z-30 text-[10px] text-indigo-400 font-mono hidden flex items-center gap-1 bg-slate-900/80 px-2 py-0.5 rounded border border-indigo-500/30">
+            <span class="w-1.5 h-1.5 bg-indigo-400 rounded-full animate-bounce"></span>
+            Analyzing...
+          </div>
+        </div>
+
+        <!-- User Video Overlay (Picture-in-Picture Style) -->
+        <div
+          class="absolute top-3 right-3 w-28 h-36 bg-slate-800 rounded-lg overflow-hidden border border-white/10 shadow-2xl z-30 flex items-center justify-center group-hover:border-white/20 transition-all">
+          <video id="userCamera" autoplay playsinline muted class="w-full h-full object-cover"></video>
+          <div id="cameraPlaceholder"
+            class="absolute inset-0 flex flex-col items-center justify-center bg-slate-800/90 text-center p-2 backdrop-blur-sm">
+            <button onclick="startCamera()"
+              class="p-2 bg-indigo-600 hover:bg-indigo-500 rounded-full text-white shadow-lg transition">
+              <i data-lucide="video" class="w-4 h-4"></i>
+            </button>
+            <p class="text-[8px] text-gray-400 mt-1">Enable</p>
+          </div>
+          <!-- Mic indicator badge -->
+          <div id="miniMicInd" class="absolute bottom-1 right-1 w-2 h-2 rounded-full bg-gray-600"></div>
+        </div>
+      </div>
+
+      <!-- Chat / Transcript Section (Bottom Half) -->
+      <div class="h-[55%] flex flex-col relative bg-slate-900/50">
+        <div
+          class="p-2 border-b border-white/5 bg-slate-800/50 text-xs text-gray-400 font-semibold flex flex-none justify-between items-center">
+          <span>Live Transcript</span>
+        </div>
+
+        <div id="chatContainer" class="flex-1 min-h-0 overflow-y-auto p-4 space-y-4 scroll-smooth">
+          <div class="bubble-ai p-3 max-w-[90%] shadow-md">
+            <p class="text-sm leading-relaxed text-gray-200">
+              Hello! I'm your interviewer for the
+              <strong id="welcomeDomain" class="text-indigo-400">Domain</strong>
+              role. Let's begin. <br /><br />
+              <span class="text-white font-semibold">"Before you write any code, please walk me through your
+                approach to the problem you are going to solve."</span>
+            </p>
+          </div>
+        </div>
+
+        <!-- Input Area -->
+        <div class="p-3 bg-slate-900 border-t border-white/10 flex flex-col gap-2">
+          <textarea id="userAnswer" rows="2"
+            class="w-full bg-slate-800/80 border border-white/5 rounded-lg p-2.5 text-xs text-gray-200 focus:outline-none focus:border-indigo-500 resize-none transition"
+            placeholder="Type or dictate your verbal approach here..."></textarea>
+
+          <div class="flex items-center gap-2">
+            <button id="micBtn" onclick="toggleMic()"
+              class="w-10 h-10 flex-none rounded-lg bg-slate-700 hover:bg-slate-600 flex items-center justify-center transition border border-white/5 active:scale-95 text-white">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"></path>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                <line x1="12" x2="12" y1="19" y2="22"></line>
+              </svg>
+            </button>
+            <button onclick="submitAnswer()"
+              class="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white h-10 rounded-lg text-sm font-bold transition flex items-center justify-center gap-2">
+              Reply <i data-lucide="send" class="w-3 h-3"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { auth, onAuthStateChanged } from "./firebase-config.js";
+
+    if (window.lucide) {
+      window.lucide.createIcons();
+    } else {
+      console.warn("Lucide icons library not loaded.");
+    }
+
+    // Auth Check
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.href = "index.html";
+      }
+    });
+
+    // --- CONFIGURATION ---
+    const GROQ_API_KEY = "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";
+    const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
+    const domain = localStorage.getItem("selectedDomain") || "General";
+    const context = localStorage.getItem("selectedContext") || "Basic Technical Skills";
+
+    document.getElementById("domainTitle").innerText = domain;
+    document.getElementById("welcomeDomain").innerText = domain;
+
+    let chatHistory = []; // Stores {role, content}
+    let declaredApproach = "";
+
+    // --- INTEGRITY, IDLE, & SPEECH EXTRACTION ---
+    let integrityViolations = [];
+    let focusTimeMs = 0;
+    let lastFocusTime = Date.now();
+    let speechTranscripts = [];
+    let tabSwitchCount = 0;
+
+    let lastActivityTime = Date.now();
+    window.resetActivityTimer = function () {
+      lastActivityTime = Date.now();
+    };
+
+    // Attach to textarea
+    document.getElementById("userAnswer").addEventListener("input", window.resetActivityTimer);
+
+    // --- BACKGROUND ANIMATION (Optimized for Mobile) ---
+    const canvas = document.getElementById("neuralCanvas");
+    const ctx = canvas.getContext("2d");
+    let width, height;
+
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    class Particle {
+      constructor() { this.reset(); }
+      reset() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.vx = (Math.random() - 0.5) * 0.3;
+        this.vy = (Math.random() - 0.5) * 0.3;
+        this.life = Math.random() * 200 + 100;
+        this.age = 0;
+      }
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.age++;
+        if (this.age > this.life || this.x < 0 || this.x > width) this.reset();
+      }
+      draw() {
+        ctx.fillStyle = `rgba(99, 102, 241, ${0.2 * (1 - this.age / this.life)})`;
+        ctx.fillRect(this.x, this.y, 2, 2);
+      }
+    }
+
+    const particleCount = window.innerWidth < 768 ? 40 : 80;
+    let particles = Array(particleCount).fill().map(() => new Particle());
+
+    function loop() {
+      ctx.clearRect(0, 0, width, height);
+      particles.forEach((p) => { p.update(); p.draw(); });
+      requestAnimationFrame(loop);
+    }
+    loop();
+
+    // --- BUILD SYSTEM PROMPT (Domain & Company Aware) ---
+    const resumeContext = localStorage.getItem("resumeContext") || "No background provided.";
+
+    function buildSystemPrompt() {
+      // Detect if this is a company-specific interview
+      const isCompanyInterview = domain.includes(" - ");
+      let companyName = "";
+      let roleName = domain;
+
+      if (isCompanyInterview) {
+        const parts = domain.split(" - ");
+        companyName = parts[0].trim();
+        roleName = parts[1].trim();
+      }
+
+      let companyContext = "";
+      if (companyName === "Google") {
+        companyContext = `You are conducting a Google-style interview. Focus heavily on algorithms, data structures, system design, and "Googleyness" (cultural fit, leadership, collaboration). Ask LeetCode-hard level problems. Probe for time/space complexity analysis. Ask system design questions like "Design Google Search" or "Design YouTube recommendations".`;
+      } else if (companyName === "Amazon") {
+        companyContext = `You are conducting an Amazon-style interview. Every question MUST tie back to Amazon's 16 Leadership Principles (Customer Obsession, Ownership, Invent & Simplify, etc.). Use the STAR method format. Ask behavioral questions like "Tell me about a time you disagreed with your manager" alongside Object-Oriented Design questions.`;
+      } else if (companyName === "Microsoft") {
+        companyContext = `You are conducting a Microsoft-style interview. Focus on problem-solving ability, system design, C#/.NET knowledge, Azure cloud services, and collaborative coding. Ask questions about designing scalable systems on Azure. Include coding problems that test edge-case thinking.`;
+      } else if (companyName === "Meta") {
+        companyContext = `You are conducting a Meta (Facebook)-style interview. Focus on React/frontend architecture, scalable infrastructure, graph algorithms, and product sense. Ask questions like "Design Facebook News Feed" or "How would you detect fake accounts at scale?". Test strong coding fundamentals.`;
+      }
+
+      const domainTopics = {
+        "Java Developer": "Core Java (OOP, Collections, Streams, Multithreading), Spring Boot (Dependency Injection, REST APIs, JPA), Hibernate, Microservices architecture, Design Patterns, JVM internals, Garbage Collection",
+        "Python Developer": "Python fundamentals (generators, decorators, context managers), Django/FastAPI, data structures, algorithms, memory management, async programming, testing frameworks",
+        "Frontend Developer": "React.js (hooks, context, Redux), JavaScript ES6+, CSS Grid/Flexbox, Web Performance, Accessibility, Browser APIs, Testing with Jest/RTL",
+        "Backend Developer": "Node.js, Express.js, MongoDB, SQL (joins, indexing, normalization), REST API design, authentication (JWT/OAuth), caching strategies, message queues",
+        "Data Scientist": "Machine Learning algorithms (regression, classification, clustering), Statistics, Python (Pandas, NumPy, Scikit-learn), Feature Engineering, Model Evaluation, SQL for data analysis",
+        "Cloud DevOps Engineer": "AWS services (EC2, S3, Lambda, RDS), Docker, Kubernetes, CI/CD pipelines (Jenkins/GitHub Actions), Infrastructure as Code (Terraform), monitoring and logging",
+        "Cyber Security Analyst": "Network security, OWASP Top 10, penetration testing, cryptography, Linux security, incident response, firewall rules, vulnerability assessment",
+        "Product Manager": "Product strategy, user stories, Agile/Scrum, prioritization frameworks (RICE, MoSCoW), metrics (DAU, retention, NPS), stakeholder management, A/B testing",
+        "C++ Developer": "C++ fundamentals (pointers, references, memory management), STL containers and algorithms, OOP in C++, templates, smart pointers, multithreading, competitive programming patterns",
+        "HR Round": "Behavioral questions (STAR method), strengths and weaknesses, motivation and goals, conflict resolution, leadership experience, cultural fit, salary expectations",
+        "System Design": "High-Level Design (HLD), Low-Level Design (LLD), scalability, load balancing, caching (Redis/Memcached), database sharding, CAP theorem, message queues, microservices vs monolith",
+        "Data Analyst": "SQL (advanced queries, window functions), Excel (pivot tables, VLOOKUP), Power BI/Tableau visualization, statistical analysis, data cleaning, ETL processes",
+      };
+
+      const topicGuide = domainTopics[domain] || domainTopics[roleName] || context;
+
+      return `You are a strict, highly experienced, and professional hiring manager conducting a LIVE technical interview.
+
+ROLE: Senior Interviewer at ${companyName || "a top tech company"}
+POSITION: ${domain}
+TECHNICAL FOCUS: ${topicGuide}
+
+${companyContext}
+
+CANDIDATE BACKGROUND:
+${resumeContext}
+
+YOUR BEHAVIOR RULES (FOLLOW STRICTLY):
+1. You are conducting a real, conversational interview. Act exactly like a real human interviewer on a video call.
+2. ALWAYS DIRECTLY ADDRESS the candidate's previous answer before asking the next question.
+3. If the candidate mentions specific projects, portfolio links, or technologies (e.g. "I built a React website"), ASK A FOLLOW-UP specifically about how they built it or challenges they faced. DO NOT ignore their context.
+4. If the candidate's answer is wrong or incomplete, DO NOT just ask a new question. Briefly correct them, offer a hint, and ask them to try again or explain further.
+5. Be supportive but challenging. Offer basic suggestions, tips, or motivation if they seem stuck or provide a vague answer.
+6. IF ASKING A CODING QUESTION, provide the EXACT code skeleton formatted inside a standard markdown code block (e.g. \`\`\`javascript ). The platform will automatically extract it into the candidate's editor.
+7. CRITICAL: Keep your conversational spoken responses EXTREMELY SHORT (under 40 words). Your text is being spoken aloud through Text-to-Speech! Act like it's a real chat.
+8. If the candidate types gibberish or unrelated text, professionally call it out and repeat the question.
+9. Cover a VARIETY of topics within the domain, smoothly transitioning between them.`;
+    }
+
+    const systemPrompt = buildSystemPrompt();
+
+    // Timer
+    let seconds = 0;
+    setInterval(() => {
+      seconds++;
+      const mins = Math.floor(seconds / 60).toString().padStart(2, "0");
+      const secs = (seconds % 60).toString().padStart(2, "0");
+      document.getElementById("timer").innerText = `${mins}:${secs}`;
+    }, 1000);
+
+    // --- SPEECH RECOGNITION ---
+    let recognition;
+    let isRecording = false;
+
+    if ("webkitSpeechRecognition" in window || "SpeechRecognition" in window) {
+      const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      recognition = new SpeechRec();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-IN'; // Better support for Indian accent and mixed Hindi/English
+
+      recognition.onresult = (event) => {
+        let interimTranscript = "";
+        let finalTranscript = "";
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+            speechTranscripts.push({ text: event.results[i][0].transcript, timestamp: seconds });
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+        const input = document.getElementById("userAnswer");
+        if (finalTranscript) {
+          input.value += (input.value ? " " : "") + finalTranscript;
+        }
+        if (interimTranscript) {
+          input.placeholder = interimTranscript + "...";
+        }
+      };
+
+      recognition.onerror = (e) => {
+        console.error("Speech Recognition Error:", e.error);
+        if (e.error !== "no-speech") { // Don't kill mic just because they are quiet!
+          toggleMic();
+        }
+      };
+
+      // Crucial: Automatically restart if it randomly pauses/ends while recording is nominally active
+      recognition.onend = () => {
+        if (isRecording) {
+          try { recognition.start(); } catch (e) { }
+        }
+      };
+    }
+
+    function toggleMic() {
+      const btn = document.getElementById("micBtn");
+      const input = document.getElementById("userAnswer");
+
+      if (isRecording) {
+        isRecording = false;
+        if (recognition) recognition.stop();
+        btn.classList.remove("mic-active");
+        input.placeholder = "Type your answer here...";
+      } else {
+        isRecording = true;
+        if (recognition) {
+          try { recognition.start(); } catch (e) { }
+        }
+        btn.classList.add("mic-active");
+        input.placeholder = "Listening... (Speak now)";
+        input.focus();
+      }
+    }
+
+    async function startCamera() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        const videoEl = document.getElementById("userCamera");
+        videoEl.srcObject = stream;
+        document.getElementById("cameraPlaceholder").style.display = "none";
+      } catch (err) {
+        alert("Camera access denied or unavailable. Please check permissions.");
+        console.error("Camera error:", err);
+      }
+    }
+
+    // --- GROQ API CALL (Restored AI Logic) ---
+    async function callGroqAPI(userMessage) {
+      const storedKey = localStorage.getItem("groqApiKey");
+      const GROQ_API_KEY = storedKey || prompt("Enter your Groq API Key (gsk_...) to connect to the AI:");
+      if (!GROQ_API_KEY) {
+        alert("API Key is required for the AI.");
+        return null;
+      }
+      if (!storedKey) localStorage.setItem("groqApiKey", GROQ_API_KEY);
+
+      const messages = [
+        { role: "system", content: systemPrompt },
+        ...chatHistory.map((m) => ({
+          role: m.role === "model" ? "assistant" : "user",
+          content: m.content,
+        })),
+        { role: "user", content: userMessage },
+      ];
+
+      try {
+        const response = await fetch(GROQ_URL, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${GROQ_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: "llama-3.1-8b-instant", // Using a smaller, faster model for conversational flow
+            messages: messages,
+            temperature: 0.7,
+            max_tokens: 500,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (data.error) {
+          console.error("Groq API Error:", data.error);
+          return null;
+        }
+
+        return data.choices?.[0]?.message?.content || null;
+      } catch (error) {
+        console.error("Groq Fetch Error:", error);
+        return null;
+      }
+    }
+
+    // --- SUBMIT ANSWER ---
+    async function submitAnswer() {
+      // If the user is currently speaking (Mic ON), stop it first so the final speech chunk is committed
+      if (isRecording) {
+        toggleMic();
+        // Brief 100ms pause to let the final speech recognition 'onresult' event fire and append to the input box
+        await new Promise(r => setTimeout(r, 100));
+      }
+
+      const input = document.getElementById("userAnswer");
+      const text = input.value.trim();
+      if (!text) return;
+
+      // UI Updates
+      addBubble(text, "user");
+      input.value = "";
+      chatHistory.push({ role: "user", content: text });
+
+      // Act as a typing indicator like the provided example agent
+      document.getElementById("aiStatus").classList.remove("hidden");
+      document.getElementById("aiStatus").innerText = "AI is thinking...";
+
+      // Capture Code from Editor
+      let codeContext = "";
+      try {
+        if (editor && typeof editor.getValue === 'function') {
+          const code = editor.getValue();
+          if (code && code.trim() !== "" && !code.includes("Write your solution below")) {
+            codeContext = `\n\n[The candidate currently has this code in the editor]:\n\`\`\`javascript\n${code}\n\`\`\``;
+          }
+        }
+      } catch (e) { }
+
+      const fullMessage = text + codeContext;
+
+      let aiResponse = await callGroqAPI(fullMessage);
+
+      if (!aiResponse || typeof aiResponse !== 'string') {
+        aiResponse = "Hmm, let me rephrase. Can you tell me more about your experience with " + context.split(",")[0] + "? Walk me through a specific project or challenge you faced.";
+      }
+
+      // Check if AI provided a coding problem/solution block safely
+      if (aiResponse) {
+        const codeBlockMatch = aiResponse.match(/```(?:javascript|js|python|java|cpp)?\n([\s\S]*?)```/i);
+        if (codeBlockMatch && editor && typeof editor.setValue === 'function') {
+          const extractedCode = codeBlockMatch[1].trim();
+          editor.setValue(`// Interviewer Question/Solution:\n\n${extractedCode}`);
+          // Remove code block from spoken text to make AI response cleaner
+          aiResponse = aiResponse.replace(/```(?:javascript|js|python|java|cpp)?\n[\s\S]*?```/i, "\n*(Code placed in editor)*\n");
+        }
+      }
+
+      document.getElementById("aiStatus").classList.add("hidden");
+      document.getElementById("aiStatus").innerText = "Analyzing live feed..."; // reset text
+
+      addBubble(aiResponse, "ai");
+      chatHistory.push({ role: "model", content: aiResponse });
+
+      // Trigger Text-to-Speech for conversational flow
+      speakText(aiResponse);
+    }
+
+    // --- TEXT TO SPEECH (AI VOICE) ---
+    function speakText(text) {
+      if (!window.speechSynthesis) return;
+
+      // Ensure any existing speech is cancelled before starting a new one
+      window.speechSynthesis.cancel();
+
+      // Clean text for speech (Remove markdown, code blocks, etc.)
+      let cleanText = text.replace(/\*\*(.*?)\*\*/g, "$1") // bold
+        .replace(/`(.*?)`/g, "$1") // inline code
+        .replace(/```[\s\S]*?```/g, "") // remove code blocks entirely
+        .replace(/_([^_]*)_/g, "$1") // italic
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, "$1") // links
+        .replace(/\*(Code placed in editor)\*/gi, "") // strip our internal marker
+        .trim();
+
+      if (!cleanText) return;
+
+      const utterance = new SpeechSynthesisUtterance(cleanText);
+
+      // Try to find a good English voice, preferably female/professional
+      const voices = window.speechSynthesis.getVoices();
+      const preferredVoice = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google'))
+        || voices.find(v => v.lang.startsWith('en'))
+        || voices[0];
+      if (preferredVoice) utterance.voice = preferredVoice;
+
+      utterance.rate = 1.05;
+      utterance.pitch = 1.0;
+
+      // Automatically turn the microphone back on when the AI finishes speaking!
+      utterance.onend = () => {
+        if (!isRecording) {
+          toggleMic();
+          // Clear the input box so it's fresh for the next spoken answer
+          document.getElementById("userAnswer").value = "";
+        }
+      };
+
+      utterance.onerror = (e) => console.warn("Speech synthesis error", e);
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    // Ensure voices are loaded (Chrome bug workaround)
+    window.speechSynthesis.onvoiceschanged = () => { window.speechSynthesis.getVoices(); };
+
+    function addBubble(text, type) {
+      const chat = document.getElementById("chatContainer");
+      const div = document.createElement("div");
+
+      if (type === "user") {
+        div.className = "bubble-user p-3 md:p-4 max-w-[85%] bg-purple-500/20 text-gray-200 text-sm mb-4 animate-fade-in break-words";
+      } else {
+        div.className = "bubble-ai p-3 md:p-4 max-w-[90%] md:max-w-[85%] mb-4 animate-fade-in text-sm text-gray-200 break-words";
+      }
+
+      // Basic markdown parsing for bold text
+      div.innerHTML = text.replace(/\*\*(.*?)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br/>");
+      chat.appendChild(div);
+
+      // Auto-scroll to the bottom smoothly
+      setTimeout(() => {
+        chat.scrollTo({
+          top: chat.scrollHeight,
+          behavior: 'smooth'
+        });
+      }, 50);
+    }
+
+    function endInterview() {
+      if (confirm("End Interview & Generate Report?")) {
+        focusTimeMs += Date.now() - lastFocusTime;
+
+        localStorage.setItem("chatHistory", JSON.stringify(chatHistory));
+        localStorage.setItem("integrityViolations", JSON.stringify(integrityViolations));
+        localStorage.setItem("focusTimeMs", focusTimeMs);
+        localStorage.setItem("speechTranscripts", JSON.stringify(speechTranscripts));
+
+        let finalCodeStr = "No code submitted.";
+        try {
+          if (editor && typeof editor.getValue === 'function') {
+            const code = editor.getValue();
+            if (code.trim().length > 0 && !code.includes("Write your solution below")) {
+              finalCodeStr = code;
+            }
+          }
+        } catch (e) {
+          console.warn("Could not get editor content.", e);
+        }
+        localStorage.setItem("finalCode", finalCodeStr);
+
+        window.location.href = "report.html";
+      }
+    }
+
+    // --- CODE EDITOR INIT ---
+    let editor = null;
+    try {
+      if (typeof require !== "undefined") {
+        require.config({
+          paths: { vs: "https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs" },
+        });
+        require(["vs/editor/editor.main"], function () {
+          editor = monaco.editor.create(document.getElementById("editor"), {
+            value: "// Welcome to the technical interview.\n// If asked a coding question, write your solution below.\n",
+            language: "javascript",
+            theme: "vs-dark",
+            automaticLayout: true,
+            minimap: { enabled: false },
+            fontSize: 14,
+            padding: { top: 16 },
+          });
+
+          // Reset idle timer when coding
+          editor.onDidChangeModelContent(() => {
+            if (window.resetActivityTimer) window.resetActivityTimer();
+          });
+        });
+      } else {
+        console.error("Monaco require loader is not defined. Editor will not load.");
+      }
+    } catch (err) {
+      console.error("Monaco Editor Init Error:", err);
+    }
+
+    // Basic Sandbox Runner
+    window.runCode = () => {
+      const term = document.getElementById("terminalArea");
+      const out = document.getElementById("runOutput");
+      if (!term || !out) return;
+
+      term.classList.remove("hidden");
+      out.innerText = "Running...";
+
+      try {
+        let logs = [];
+        const ogLog = console.log;
+        console.log = function (...args) {
+          logs.push(args.join(" "));
+          ogLog.apply(console, args);
+        };
+
+        const code = editor ? editor.getValue() : "";
+        let result = new Function(code)();
+
+        console.log = ogLog;
+        out.innerText =
+          logs.length > 0
+            ? logs.join("\n") + (result !== undefined ? "\nReturned: " + result : "")
+            : "Execution finished. No console output." + (result !== undefined ? "\nReturned: " + result : "");
+      } catch (e) {
+        out.innerText = "Error: " + e.message;
+      }
+    };
+
+    // Expose functions to HTML onclick handlers
+    window.toggleMic = toggleMic;
+    window.startCamera = startCamera;
+    window.submitAnswer = submitAnswer;
+    window.endInterview = endInterview;
+
+    // --- LIVE INTERRUPTIONS (45s Idle Trigger) ---
+    // If the candidate doesn't type or speak for 45 seconds, the AI interrupts naturally.
+    setInterval(() => {
+      const isEvaluating = !document.getElementById("aiStatus").classList.contains("hidden");
+      const timeSinceLastAction = Date.now() - lastActivityTime;
+
+      // Only interrupt if idle for >45s, not waiting for Groq, and interview hasn't just started
+      if (timeSinceLastAction > 45000 && !isEvaluating && chatHistory.length > 2) {
+        window.resetActivityTimer(); // Prevent spamming
+        const probeMsg = "What are you thinking right now? Talk me through your approach.";
+        addBubble(probeMsg, "ai");
+        chatHistory.push({ role: "model", content: probeMsg });
+
+        // Speak the interruption if desired (optional)
+        // speak(probeMsg);
+      }
+    }, 5000);
+
+    // --- START INTERVIEW IMPERATIVELY (Stage 1 Problem Reveal Sequence) ---
+    setTimeout(async () => {
+      document.getElementById("aiStatus").classList.remove("hidden");
+      const introMessage = "Hi, I am ready to begin the interview. Give me a challenging problem statement, but DO NOT ask me a follow-up question yet. Just present the problem.";
+
+      const chatContainer = document.getElementById("chatContainer");
+      if (chatContainer) chatContainer.innerHTML = ""; // Clear hardcoded HTML
+
+      addBubble("Alright, let's get started. I'm going to give you a problem — take your time reading it.", "ai");
+
+      let initialResponse = await callGroqAPI(introMessage);
+
+      if (!initialResponse || typeof initialResponse !== 'string') {
+        initialResponse = "I am having trouble connecting to my brain. Let's start simple: Can you tell me about the most difficult bug you've ever faced?";
+      }
+
+      // Parse code block if any safely
+      if (initialResponse) {
+        const codeBlockMatch = initialResponse.match(/```(?:javascript|js|python|java|cpp)?\n([\s\S]*?)```/i);
+        if (codeBlockMatch && editor && typeof editor.setValue === 'function') {
+          const extractedCode = codeBlockMatch[1].trim();
+          editor.setValue(`// Interviewer Question:\n\n${extractedCode}`);
+          initialResponse = initialResponse.replace(/```(?:javascript|js|python|java|cpp)?\n[\s\S]*?```/i, "\n*(Problem placed in editor)*\n");
+        }
+      }
+
+      document.getElementById("aiStatus").classList.add("hidden");
+      addBubble(initialResponse, "ai");
+      chatHistory.push({ role: "model", content: "Alright, let's get started. I'm going to give you a problem — take your time reading it.\n\n" + initialResponse });
+      window.resetActivityTimer();
+
+      // Sequential probing AFTER the problem is posted
+      setTimeout(() => {
+        if (Date.now() - lastActivityTime > 4000) {
+          addBubble("Before you start, do you have any clarifying questions?", "ai");
+          chatHistory.push({ role: "model", content: "Before you start, do you have any clarifying questions?" });
+        }
+
+        setTimeout(() => {
+          if (Date.now() - lastActivityTime > 7000) {
+            addBubble("Take your time — what's your first instinct about this problem?", "ai");
+            chatHistory.push({ role: "model", content: "Take your time — what's your first instinct about this problem?" });
+          }
+        }, 8000);
+
+      }, 8000);
+
+    }, 1000);
+  </script>
+  <script type="module" src="helpdesk.js"></script>
+  <script src="anti_cheat.js"></script>
+</body>
+
+</html>
