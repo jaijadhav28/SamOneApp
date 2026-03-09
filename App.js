@@ -1,20 +1,29 @@
-import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { NavigationContainer, DarkTheme } from '@react-navigation/native';
+import { createNativeStackNavigator } from '@react-navigation/native-stack';
+
+// Screens
+import InterviewScreen from './src/screens/InterviewScreen';
+import ReportScreen from './src/screens/ReportScreen';
+import { InterviewProvider } from './src/context/InterviewContext';
+
+const Stack = createNativeStackNavigator();
 
 export default function App() {
   return (
-    <View style={styles.container}>
-      <Text>Open up App.js to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <InterviewProvider>
+      <NavigationContainer theme={DarkTheme}>
+        <Stack.Navigator
+          initialRouteName="Interview"
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: '#0f172a' } // Dark theme background matching legacy UI
+          }}
+        >
+          <Stack.Screen name="Interview" component={InterviewScreen} />
+          <Stack.Screen name="Report" component={ReportScreen} />
+        </Stack.Navigator>
+      </NavigationContainer>
+    </InterviewProvider>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
