@@ -1,0 +1,18 @@
+{
+  "name": "SamOneApp",
+  "version": "1.0.0",
+  "description": "A basic HTML web application converted from a React Native project.",
+  "main": "src/js/app.js",
+  "scripts": {
+    "start": "live-server public",
+    "build": "echo 'Build step not defined'",
+    "test": "echo 'Test step not defined'"
+  },
+  "keywords": [],
+  "author": "Your Name",
+  "license": "ISC",
+  "dependencies": {},
+  "devDependencies": {
+    "live-server": "^1.2.1"
+  }
+}
