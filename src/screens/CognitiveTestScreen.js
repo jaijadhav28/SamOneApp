@@ -89,7 +89,7 @@ export default function CognitiveTestScreen({ route }) {
       localStorage.setItem("cognitive_percent", percent.toString());
       localStorage.setItem("cognitive_violations", violationCount.toString());
     }
-    navigation.replace("Interview", {
+    navigation.replace("CodingTest", {
       domain, context, sessionId, resumeContext,
       cognitiveScore: percent, cognitiveViolations: violationCount
     });

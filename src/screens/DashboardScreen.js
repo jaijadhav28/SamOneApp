@@ -236,7 +236,7 @@ export default function DashboardScreen() {
                                 <Text style={styles.launchDesc}>Jump straight into a specialized test or use your exact resume to generate custom HR and technical rounds.</Text>
                             </View>
                             <View style={styles.launchButtons}>
-                                <TouchableOpacity style={[styles.launchBtn, { backgroundColor: '#0ea5e9' }]}>
+                                <TouchableOpacity style={[styles.launchBtn, { backgroundColor: '#0ea5e9' }]} onPress={() => navigation.navigate("Cognitive")}>
                                     <Zap size={20} color="white" />
                                     <Text style={styles.launchBtnText}>Deep & Easy AI</Text>
                                 </TouchableOpacity>
