@@ -1,0 +1,853 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Dashboard - MockMentor</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="manifest" href="manifest.json" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap");
+
+    body {
+      font-family: "Inter", sans-serif;
+      background: #0f172a;
+      color: white;
+      overflow-x: hidden;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.1);
+    }
+
+    .glass-card {
+      background: rgba(30, 41, 59, 0.4);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .glass-card:hover {
+      transform: translateY(-5px);
+      background: rgba(30, 41, 59, 0.6);
+      border-color: #6366f1;
+      box-shadow: 0 10px 25px -5px rgba(99, 102, 241, 0.3);
+    }
+
+    /* Pricing Card Special Styles */
+    .plan-card {
+      position: relative;
+      overflow: hidden;
+    }
+
+    .plan-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg,
+          transparent,
+          rgba(255, 255, 255, 0.2),
+          transparent);
+    }
+
+    .popular-badge {
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);
+    }
+  </style>
+  <link rel="stylesheet" href="glow_effect.css" />
+</head>
+
+<body class="min-h-screen relative">
+  <canvas id="neuralCanvas" class="fixed top-0 left-0 w-full h-full -z-10"></canvas>
+
+  <nav class="sticky top-0 z-50 glass border-b border-white/5 px-6 py-4">
+    <div class="max-w-7xl mx-auto flex justify-between items-center">
+      <div class="flex items-center gap-2 cursor-pointer" onclick="window.location.href = 'home.html'">
+        <i data-lucide="brain-circuit" class="text-indigo-400 w-6 h-6"></i>
+        <span class="text-xl font-bold tracking-tight">Mock<span class="text-indigo-400">Mentor</span></span>
+      </div>
+      <div class="flex items-center gap-4">
+        <button onclick="
+              document
+                .getElementById('pricing')
+                .scrollIntoView({ behavior: 'smooth' })
+            " class="hidden md:block text-sm font-medium text-yellow-400 hover:text-yellow-300 transition">
+          Upgrade Plan
+        </button>
+        <div class="w-10 h-10 rounded-full bg-slate-700 bg-cover bg-center border-2 border-white/10" id="navProfilePic">
+        </div>
+        <button onclick="handleLogout()"
+          class="p-2 hover:bg-red-500/10 rounded-lg text-gray-400 hover:text-red-400 transition">
+          <i data-lucide="log-out" class="w-5 h-5"></i>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-7xl mx-auto px-6 pt-10">
+    <div class="mb-12">
+      <h1 class="text-4xl font-extrabold mb-4">
+        Welcome back, <span id="userName" class="text-indigo-400">...</span>
+      </h1>
+      <p class="text-gray-400 text-lg">
+        Your progress updates in real-time. Select a professional track to
+        begin.
+      </p>
+    </div>
+
+    <div class="mt-12 text-center relative z-10 mb-8">
+      <h1 class="text-4xl md:text-6xl font-black mb-4 tracking-tighter">
+        Master the <span class="gradient-text">Interview.</span>
+      </h1>
+      <p class="text-lg text-gray-400 max-w-2xl mx-auto">
+        AI-powered mock interviews tailored to your exact career, skills,
+        and target companies.
+      </p>
+    </div>
+
+    <h2 class="text-xl font-bold mb-4 mt-8 flex items-center gap-2 text-indigo-400">
+      <i data-lucide="briefcase" class="w-5 h-5"></i> Career Tracks & Companies Stats
+    </h2>
+    <!-- Unified Stats Box -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12 relative z-10">
+      <div class="glass p-6 rounded-2xl flex items-center gap-5">
+        <div class="p-4 bg-green-500/10 rounded-xl text-green-400 border border-green-500/20">
+          <i data-lucide="check-circle" class="w-8 h-8"></i>
+        </div>
+        <div>
+          <h3 class="text-3xl font-bold" id="statCount">0</h3>
+          <p class="text-sm text-gray-400">Interviews Completed</p>
+        </div>
+      </div>
+      <div class="glass p-6 rounded-2xl flex items-center gap-5">
+        <div class="p-4 bg-blue-500/10 rounded-xl text-blue-400 border border-blue-500/20">
+          <i data-lucide="trending-up" class="w-8 h-8"></i>
+        </div>
+        <div>
+          <h3 class="text-3xl font-bold" id="statScore">0%</h3>
+          <p class="text-sm text-gray-400">Average Score</p>
+        </div>
+      </div>
+      <div class="glass p-6 rounded-2xl flex items-center gap-5">
+        <div class="p-4 bg-purple-500/10 rounded-xl text-purple-400 border border-purple-500/20">
+          <i data-lucide="clock" class="w-8 h-8"></i>
+        </div>
+        <div>
+          <h3 class="text-3xl font-bold" id="statTime">0m</h3>
+          <p class="text-sm text-gray-400">Minutes Practiced</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Deep Edge & Careers (3D Tilt Layout) -->
+    <div class="tilt-container relative py-12 mb-12 mt-12 w-full flex flex-col items-center overflow-hidden"
+      style="perspective: 1200px;">
+
+      <!-- ambient background -->
+      <div class="absolute top-0 right-1/4 w-96 h-96 bg-cyan-500/10 rounded-full blur-[100px] pointer-events-none z-0">
+      </div>
+      <div
+        class="absolute bottom-0 left-1/4 w-96 h-96 bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none z-0">
+      </div>
+
+      <div
+        class="tilt-header w-full max-w-5xl z-20 relative transition-transform duration-300 ease-out mb-12 text-center md:text-left">
+        <h2 class="text-3xl font-black mb-4 flex items-center justify-center md:justify-start gap-3">
+          <i data-lucide="layers" class="text-indigo-400 w-8 h-8"></i> Track & <span
+            class="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-400">Launch</span>
+        </h2>
+        <p class="text-gray-400 max-w-2xl text-lg">
+          Monitor your specialized interview statistics and instantly jump into AI-driven diagnostic tests.
+        </p>
+      </div>
+
+      <div
+        class="tilt-card max-w-5xl w-full border-4 border-[#333] p-2 md:p-6 bg-[#222222] rounded-[30px] shadow-2xl z-10 relative origin-bottom will-change-transform">
+        <div
+          class="h-full w-full bg-slate-900 border border-white/5 rounded-2xl p-6 md:p-10 shadow-inner overflow-hidden relative">
+
+          <h2 class="text-xl font-bold mb-4 flex items-center gap-2 text-cyan-400">
+            <i data-lucide="zap" class="w-5 h-5"></i> Deep & Easy MockMentor Stats
+          </h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12 relative z-10">
+            <div class="glass p-6 border border-cyan-500/20 rounded-2xl flex items-center gap-5">
+              <div class="p-4 bg-cyan-500/10 rounded-xl text-cyan-400 border border-cyan-500/20">
+                <i data-lucide="brain" class="w-8 h-8"></i>
+              </div>
+              <div>
+                <h3 class="text-3xl font-bold" id="deepStatCount">0</h3>
+                <p class="text-sm text-gray-400">Assessments Completed</p>
+              </div>
+            </div>
+            <div class="glass p-6 border border-indigo-500/20 rounded-2xl flex items-center gap-5">
+              <div class="p-4 bg-indigo-500/10 rounded-xl text-indigo-400 border border-indigo-500/20">
+                <i data-lucide="bar-chart-2" class="w-8 h-8"></i>
+              </div>
+              <div>
+                <h3 class="text-3xl font-bold" id="deepStatScore">0%</h3>
+                <p class="text-sm text-gray-400">Average Overall Score</p>
+              </div>
+            </div>
+          </div>
+
+          <div
+            class="pt-8 border-t border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+            <div>
+              <h3 class="text-lg font-bold text-white mb-2">Quick Launch</h3>
+              <p class="text-sm text-gray-400 max-w-sm">Jump straight into a specialized test or use your exact resume
+                to generate custom HR and technical rounds.</p>
+            </div>
+            <div class="flex flex-col sm:flex-row gap-4">
+              <button onclick="window.location.href = 'cognitive_test.html'"
+                class="bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-[0_0_15px_rgba(6,182,212,0.3)] hover:shadow-[0_0_25px_rgba(6,182,212,0.5)] flex items-center justify-center gap-2">
+                <i data-lucide="zap" class="w-5 h-5 animate-pulse"></i> Deep & Easy AI
+              </button>
+              <button onclick="window.location.href = 'resume_interview.html'"
+                class="bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-[0_0_15px_rgba(236,72,153,0.3)] hover:shadow-[0_0_25px_rgba(236,72,153,0.5)] flex items-center justify-center gap-2">
+                <i data-lucide="upload-cloud" class="w-5 h-5"></i> Upload Resume
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
+      <div onclick="
+            selectDomain(
+              'Java Developer',
+              'Core Java, Spring Boot, Hibernate, Microservices',
+            )
+          " class="glass-card p-6 rounded-2xl cursor-pointer group">
+        <div
+          class="w-14 h-14 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-400 mb-6 border border-red-500/20 group-hover:scale-110 transition">
+          <i data-lucide="coffee" class="w-7 h-7"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">Java Full Stack</h3>
+        <p class="text-sm text-gray-400">
+          Spring Boot, Microservices, System Design
+        </p>
+      </div>
+      <div onclick="
+            selectDomain(
+              'Python Developer',
+              'Python, Django, FastAPI, Data Structures',
+            )
+          " class="glass-card p-6 rounded-2xl cursor-pointer group">
+        <div
+          class="w-14 h-14 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-400 mb-6 border border-blue-500/20 group-hover:scale-110 transition">
+          <i data-lucide="code-2" class="w-7 h-7"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">Python Developer</h3>
+        <p class="text-sm text-gray-400">
+          Django, FastAPI, Scripting & Automation
+        </p>
+      </div>
+      <div onclick="
+            selectDomain(
+              'Frontend Developer',
+              'React.js, JavaScript, CSS, Redux, Performance',
+            )
+          " class="glass-card p-6 rounded-2xl cursor-pointer group">
+        <div
+          class="w-14 h-14 bg-cyan-500/10 rounded-2xl flex items-center justify-center text-cyan-400 mb-6 border border-cyan-500/20 group-hover:scale-110 transition">
+          <i data-lucide="layout-template" class="w-7 h-7"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">Frontend React</h3>
+        <p class="text-sm text-gray-400">
+          React.js, Redux, DOM Manipulation, CSS
+        </p>
+      </div>
+      <div onclick="
+            selectDomain(
+              'Backend Developer',
+              'Node.js, Express, MongoDB, SQL, API Design',
+            )
+          " class="glass-card p-6 rounded-2xl cursor-pointer group">
+        <div
+          class="w-14 h-14 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-400 mb-6 border border-emerald-500/20 group-hover:scale-110 transition">
+          <i data-lucide="server" class="w-7 h-7"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">Node.js Backend</h3>
+        <p class="text-sm text-gray-400">Express, MongoDB, SQL, REST APIs</p>
+      </div>
+      <div onclick="
+            selectDomain(
+              'Data Scientist',
+              'Machine Learning, Statistics, SQL, Python',
+            )
+          " class="glass-card p-6 rounded-2xl cursor-pointer group">
+        <div
+          class="w-14 h-14 bg-green-500/10 rounded-2xl flex items-center justify-center text-green-400 mb-6 border border-green-500/20 group-hover:scale-110 transition">
+          <i data-lucide="database" class="w-7 h-7"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">Data Science</h3>
+        <p class="text-sm text-gray-400">ML Algorithms, Pandas, Statistics</p>
+      </div>
+      <div onclick="
+            selectDomain(
+              'Cloud DevOps Engineer',
+              'AWS, Docker, Kubernetes, CI/CD',
+            )
+          " class="glass-card p-6 rounded-2xl cursor-pointer group">
+        <div
+          class="w-14 h-14 bg-orange-500/10 rounded-2xl flex items-center justify-center text-orange-400 mb-6 border border-orange-500/20 group-hover:scale-110 transition">
+          <i data-lucide="cloud" class="w-7 h-7"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">Cloud & DevOps</h3>
+        <p class="text-sm text-gray-400">
+          AWS, Docker, Kubernetes, CI/CD Pipelines
+        </p>
+      </div>
+      <div onclick="
+            selectDomain(
+              'Cyber Security Analyst',
+              'Network Security, Ethical Hacking, OWASP, Linux',
+            )
+          " class="glass-card p-6 rounded-2xl cursor-pointer group">
+        <div
+          class="w-14 h-14 bg-red-600/10 rounded-2xl flex items-center justify-center text-red-500 mb-6 border border-red-600/20 group-hover:scale-110 transition">
+          <i data-lucide="shield-alert" class="w-7 h-7"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">Cyber Security</h3>
+        <p class="text-sm text-gray-400">
+          Network Security, Ethical Hacking, OWASP
+        </p>
+      </div>
+      <div onclick="
+            selectDomain(
+              'Product Manager',
+              'Agile, User Stories, Product Strategy, Metrics',
+            )
+          " class="glass-card p-6 rounded-2xl cursor-pointer group">
+        <div
+          class="w-14 h-14 bg-yellow-500/10 rounded-2xl flex items-center justify-center text-yellow-400 mb-6 border border-yellow-500/20 group-hover:scale-110 transition">
+          <i data-lucide="briefcase" class="w-7 h-7"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">Product Mgmt</h3>
+        <p class="text-sm text-gray-400">
+          Agile, Strategy, User Metrics, Roadmap
+        </p>
+      </div>
+      <div onclick="
+            selectDomain(
+              'C++ Developer',
+              'C++, STL, Memory Management, Pointers',
+            )
+          " class="glass-card p-6 rounded-2xl cursor-pointer group">
+        <div
+          class="w-14 h-14 bg-indigo-600/10 rounded-2xl flex items-center justify-center text-indigo-500 mb-6 border border-indigo-600/20 group-hover:scale-110 transition">
+          <i data-lucide="binary" class="w-7 h-7"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">C++ Core</h3>
+        <p class="text-sm text-gray-400">STL, Pointers, Memory Mgmt, DSA</p>
+      </div>
+      <div onclick="
+            selectDomain(
+              'HR Round',
+              'Behavioral, Leadership, Strengths/Weaknesses, Situational',
+            )
+          " class="glass-card p-6 rounded-2xl cursor-pointer group">
+        <div
+          class="w-14 h-14 bg-purple-500/10 rounded-2xl flex items-center justify-center text-purple-400 mb-6 border border-purple-500/20 group-hover:scale-110 transition">
+          <i data-lucide="users" class="w-7 h-7"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">HR Behavioral</h3>
+        <p class="text-sm text-gray-400">
+          Leadership, Conflict Resolution, Soft Skills
+        </p>
+      </div>
+      <div onclick="
+            selectDomain(
+              'System Design',
+              'Scalability, Load Balancing, Caching, Database Design',
+            )
+          " class="glass-card p-6 rounded-2xl cursor-pointer group">
+        <div
+          class="w-14 h-14 bg-pink-500/10 rounded-2xl flex items-center justify-center text-pink-400 mb-6 border border-pink-500/20 group-hover:scale-110 transition">
+          <i data-lucide="network" class="w-7 h-7"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">System Design</h3>
+        <p class="text-sm text-gray-400">
+          Scalability, HLD/LLD, Load Balancing
+        </p>
+      </div>
+      <div onclick="selectDomain('Data Analyst', 'Excel, SQL, PowerBI, Tableau')"
+        class="glass-card p-6 rounded-2xl cursor-pointer group">
+        <div
+          class="w-14 h-14 bg-teal-500/10 rounded-2xl flex items-center justify-center text-teal-400 mb-6 border border-teal-500/20 group-hover:scale-110 transition">
+          <i data-lucide="bar-chart-big" class="w-7 h-7"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2">Data Analyst</h3>
+        <p class="text-sm text-gray-400">
+          Excel, SQL, PowerBI, Visualization
+        </p>
+      </div>
+    </div>
+
+    <h2 class="text-2xl font-bold mb-6 flex items-center gap-2 mt-12">
+      <i data-lucide="building-2" class="text-indigo-400"></i>
+      Company-Specific Interviews
+    </h2>
+    <p class="text-gray-400 text-sm mb-6 mt-[-1rem]">
+      Tailored questions, technical tests, and HR rounds modeled after top
+      tech giants.
+    </p>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
+      <div onclick="
+            selectDomain(
+              'Google - SWE',
+              'Algorithms, System Design, Googleyness, Scalability',
+            )
+          " class="glass-card p-6 rounded-2xl cursor-pointer group relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-red-500/5 z-0 pointer-events-none"></div>
+        <div
+          class="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center text-white mb-6 border border-white/10 group-hover:scale-110 transition z-10 relative">
+          <i data-lucide="compass" class="w-7 h-7"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2 z-10 relative">Google</h3>
+        <p class="text-sm text-gray-400 z-10 relative">
+          Algo & Data Structures, System Design
+        </p>
+      </div>
+      <div onclick="
+            selectDomain(
+              'Amazon - SDE',
+              'Leadership Principles, Object Oriented Design, AWS',
+            )
+          " class="glass-card p-6 rounded-2xl cursor-pointer group relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-yellow-500/5 z-0 pointer-events-none"></div>
+        <div
+          class="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center text-white mb-6 border border-white/10 group-hover:scale-110 transition z-10 relative">
+          <i data-lucide="shopping-cart" class="w-7 h-7"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2 z-10 relative">Amazon</h3>
+        <p class="text-sm text-gray-400 z-10 relative">
+          Leadership Principles, OOD
+        </p>
+      </div>
+      <div onclick="
+            selectDomain(
+              'Microsoft - SWE',
+              'C#, Azure, System Design, Problem Solving',
+            )
+          " class="glass-card p-6 rounded-2xl cursor-pointer group relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-400/5 to-cyan-500/5 z-0 pointer-events-none"></div>
+        <div
+          class="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center text-white mb-6 border border-white/10 group-hover:scale-110 transition z-10 relative">
+          <i data-lucide="grid-3x3" class="w-7 h-7"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2 z-10 relative">Microsoft</h3>
+        <p class="text-sm text-gray-400 z-10 relative">
+          C#, Problem Solving, Azure
+        </p>
+      </div>
+      <div onclick="
+            selectDomain(
+              'Meta - SWE',
+              'React, Scalable Infrastructure, Graph Algorithms',
+            )
+          " class="glass-card p-6 rounded-2xl cursor-pointer group relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-indigo-600/5 z-0 pointer-events-none"></div>
+        <div
+          class="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center text-white mb-6 border border-white/10 group-hover:scale-110 transition z-10 relative">
+          <i data-lucide="facebook" class="w-7 h-7"></i>
+        </div>
+        <h3 class="text-xl font-bold mb-2 z-10 relative">Meta</h3>
+        <p class="text-sm text-gray-400 z-10 relative">
+          Performance, React, Graph Algos
+        </p>
+      </div>
+    </div>
+
+    <div id="pricing" class="border-t border-white/10 pt-16">
+      <h2 class="text-3xl font-bold mb-8 text-center flex items-center justify-center gap-2">
+        <i data-lucide="crown" class="text-yellow-400 w-8 h-8"></i> Plans &
+        Pricing
+      </h2>
+
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div
+          class="plan-card glass p-8 rounded-3xl border border-white/5 flex flex-col hover:border-indigo-500/30 transition-all">
+          <h3 class="text-xl font-bold text-gray-300">Aspirant</h3>
+          <div class="mt-4 mb-6">
+            <span class="text-4xl font-bold">Free</span>
+            <span class="text-gray-500">/ forever</span>
+          </div>
+          <ul class="space-y-4 mb-8 text-sm text-gray-400 flex-1">
+            <li class="flex gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-green-400"></i> 5
+              Interviews / Month
+            </li>
+            <li class="flex gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-green-400"></i> Basic
+              AI Feedback
+            </li>
+            <li class="flex gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-green-400"></i>
+              Standard Tracks
+            </li>
+          </ul>
+          <button
+            class="w-full py-3 rounded-xl border border-white/10 hover:bg-white/5 transition font-semibold text-gray-300">
+            Current Plan
+          </button>
+        </div>
+
+        <div
+          class="plan-card glass p-8 rounded-3xl border border-indigo-500/50 flex flex-col relative transform scale-105 shadow-2xl shadow-indigo-500/20">
+          <div class="absolute top-0 right-0 popular-badge text-white text-xs font-bold px-3 py-1 rounded-bl-xl">
+            POPULAR
+          </div>
+          <h3 class="text-xl font-bold text-white">Pro Achiever</h3>
+          <div class="mt-4 mb-6">
+            <span class="text-4xl font-bold text-indigo-400">$9</span>
+            <span class="text-gray-500">/ month</span>
+          </div>
+          <ul class="space-y-4 mb-8 text-sm text-gray-300 flex-1">
+            <li class="flex gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-indigo-400"></i>
+              <strong class="text-white">Unlimited</strong> Interviews
+            </li>
+            <li class="flex gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-indigo-400"></i> Deep
+              Behavioral & "Say vs Do" Analysis
+            </li>
+            <li class="flex gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-indigo-400"></i>
+              Company-Specific Tracks
+            </li>
+            <li class="flex gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-indigo-400"></i>
+              Resume Intelligence & Parsing
+            </li>
+          </ul>
+          <button onclick="handleSubscribe('Pro')"
+            class="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 transition font-bold text-white shadow-lg shadow-indigo-500/25">
+            Upgrade Now
+          </button>
+        </div>
+
+        <div
+          class="plan-card glass p-8 rounded-3xl border border-purple-500/30 flex flex-col hover:border-purple-500/50 transition-all">
+          <h3 class="text-xl font-bold text-purple-200">
+            Mentor & Institute
+          </h3>
+          <div class="mt-4 mb-6">
+            <span class="text-4xl font-bold text-purple-400">$49</span>
+            <span class="text-gray-500">/ month</span>
+          </div>
+          <p class="text-xs text-gray-400 mb-4">
+            For Teachers, Colleges & Coaching Centers
+          </p>
+          <ul class="space-y-4 mb-8 text-sm text-gray-400 flex-1">
+            <li class="flex gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-purple-400"></i>
+              Manage up to 50 Students
+            </li>
+            <li class="flex gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-purple-400"></i>
+              <strong class="text-white">Student Analytics Dashboard</strong>
+            </li>
+            <li class="flex gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-purple-400"></i>
+              Create Custom Questions
+            </li>
+            <li class="flex gap-2">
+              <i data-lucide="check" class="w-4 h-4 text-purple-400"></i> Bulk
+              Report PDF Download
+            </li>
+          </ul>
+          <button onclick="handleSubscribe('Mentor')"
+            class="w-full py-3 rounded-xl bg-purple-600/20 border border-purple-500/50 hover:bg-purple-600/30 text-purple-300 transition font-bold">
+            Contact Sales / Buy
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Resume Context Modal -->
+    <div id="resumeModal"
+      class="fixed inset-0 z-50 bg-slate-900/95 backdrop-blur-sm hidden flex flex-col items-center justify-center p-4">
+      <div
+        class="glass-modal w-full max-w-lg p-6 md:p-8 rounded-3xl shadow-2xl relative overflow-hidden border border-indigo-500/30">
+        <button onclick="closeResumeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-white transition">
+          <i data-lucide="x"></i>
+        </button>
+        <div class="flex items-center gap-4 mb-4">
+          <div class="w-12 h-12 rounded-xl bg-indigo-500/20 flex items-center justify-center text-indigo-400">
+            <i data-lucide="file-text" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h2 class="text-xl font-bold text-white">Interview Context</h2>
+            <p class="text-sm text-gray-400">
+              Provide your background for a personalized interview.
+            </p>
+          </div>
+        </div>
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-semibold text-gray-400 mb-2">Paste your Resume / Experience Summary</label>
+            <textarea id="resumeText" rows="6"
+              placeholder="E.g., I have 3 years of experience as a React developer, primarily working on e-commerce platforms. My main skills include React, Node.js, and Redis..."
+              class="w-full bg-slate-800/50 border border-white/10 rounded-xl py-3 px-4 focus:outline-none focus:border-indigo-500 transition text-white text-sm resize-none"></textarea>
+            <p class="text-[10px] text-gray-500 mt-1">
+              Our AI will parse this to ask highly relevant, personalized
+              questions.
+            </p>
+          </div>
+          <button onclick="startInterviewWithContext()"
+            class="w-full bg-indigo-600 hover:bg-indigo-500 text-white py-3 rounded-xl font-bold transition shadow-lg shadow-indigo-500/20 flex items-center justify-center gap-2">
+            Start Interview <i data-lucide="arrow-right" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="py-8 border-t border-white/5 text-center text-gray-500 text-sm bg-[#0f172a] mt-12">
+    <p>&copy; 2026 MockMentor AI. Built with ❤️ By Jai Jadhav (JJ.28).</p>
+  </footer>
+
+  <script type="module">
+    import {
+      auth,
+      db,
+      doc,
+      setDoc,
+      updateDoc,
+      onSnapshot,
+      onAuthStateChanged,
+      signOut,
+    } from "./firebase-config.js";
+    lucide.createIcons();
+
+    // Background Anim
+    const canvas = document.getElementById("neuralCanvas"),
+      ctx = canvas.getContext("2d");
+    let width = (canvas.width = window.innerWidth),
+      height = (canvas.height = window.innerHeight);
+    class Particle {
+      constructor() {
+        this.reset();
+      }
+      reset() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.vx = (Math.random() - 0.5) * 0.5;
+        this.vy = (Math.random() - 0.5) * 0.5;
+        this.age = 0;
+        this.life = 200;
+      }
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.age++;
+        if (this.age > this.life) this.reset();
+      }
+      draw() {
+        ctx.fillStyle = `rgba(99,102,241,${0.3 * (1 - this.age / this.life)})`;
+        ctx.fillRect(this.x, this.y, 2, 2);
+      }
+    }
+    let particles = Array(100)
+      .fill()
+      .map(() => new Particle());
+    function loop() {
+      ctx.clearRect(0, 0, width, height);
+      particles.forEach((p) => {
+        p.update();
+        p.draw();
+      });
+      requestAnimationFrame(loop);
+    }
+    loop();
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        // REAL-TIME LISTENER
+        onSnapshot(doc(db, "users", user.uid), (doc) => {
+          if (doc.exists()) {
+            const data = doc.data();
+            const isPro = data.plan === "Pro";
+            const nameDisplay = isPro
+              ? `${data.name.split(" ")[0]} <span class="bg-indigo-600 shadow-[0_0_10px_rgba(79,70,229,0.5)] text-white text-[10px] px-2 py-0.5 rounded-full ml-2 align-middle font-bold tracking-wider">PRO</span>`
+              : data.name.split(" ")[0];
+
+            document.getElementById("userName").innerHTML = nameDisplay;
+
+            const pic = document.getElementById("navProfilePic");
+            if (data.photo) pic.style.backgroundImage = `url(${data.photo})`;
+            else {
+              pic.innerText = data.name.charAt(0);
+              pic.classList.add(
+                "flex",
+                "items-center",
+                "justify-center",
+                "text-white",
+                "font-bold",
+              );
+            }
+
+            document.getElementById("statCount").innerText =
+              data.interviewsCompleted || 0;
+            const avg =
+              data.interviewsCompleted > 0
+                ? Math.round(data.totalScore / data.interviewsCompleted)
+                : 0;
+            document.getElementById("statScore").innerText = avg + "%";
+            document.getElementById("statTime").innerText =
+              (data.practiceMinutes || 0) + "m";
+            // Deep AI Stats
+            const deepCount = data.deepInterviewsCompleted || 0;
+            const deepAvg = deepCount > 0
+              ? Math.round((data.deepTotalScore || 0) / deepCount)
+              : 0;
+
+            const elDeepCount = document.getElementById("deepStatCount");
+            const elDeepScore = document.getElementById("deepStatScore");
+            if (elDeepCount) elDeepCount.innerText = deepCount;
+            if (elDeepScore) elDeepScore.innerText = deepAvg + "%";
+
+          }
+        });
+      } else {
+        window.location.href = "home.html";
+      }
+    });
+
+    window.selectDomain = async (name, context) => {
+      localStorage.setItem("selectedDomain", name);
+      localStorage.setItem("selectedContext", context);
+      localStorage.setItem("resumeContext", "No background provided.");
+
+      // Generate Unified Session ID
+      const sessionId =
+        "session_" +
+        Date.now() +
+        "_" +
+        Math.random().toString(36).substr(2, 9);
+      localStorage.setItem("currentSessionId", sessionId);
+
+      // Optional: Save initial session to Firestore if user is logged in
+      if (auth.currentUser) {
+        try {
+          await setDoc(doc(db, "sessions", sessionId), {
+            userId: auth.currentUser.uid,
+            domain: name,
+            context: context,
+            resumeText: "No background provided.",
+            status: "started",
+            startTime: new Date().toISOString(),
+            transcripts: [],
+            integrityEvents: [],
+          });
+        } catch (e) {
+          console.error("Error creating session record: ", e);
+        }
+      }
+
+      window.location.href = "interview.html";
+    };
+
+    window.closeResumeModal = () => {
+      document.getElementById("resumeModal").classList.add("hidden");
+    };
+
+    window.startInterviewWithContext = async () => {
+      let resumeText = document.getElementById("resumeText").value.trim();
+      if (!resumeText) {
+        resumeText = "No background provided.";
+      }
+
+      // Generate Unified Session ID
+      const sessionId =
+        "session_" +
+        Date.now() +
+        "_" +
+        Math.random().toString(36).substr(2, 9);
+      localStorage.setItem("currentSessionId", sessionId);
+      localStorage.setItem("resumeContext", resumeText);
+
+      // Optional: Save initial session to Firestore if user is logged in
+      if (auth.currentUser) {
+        try {
+          await setDoc(doc(db, "sessions", sessionId), {
+            userId: auth.currentUser.uid,
+            domain: localStorage.getItem("selectedDomain"),
+            context: localStorage.getItem("selectedContext"),
+            resumeText: resumeText,
+            status: "started",
+            startTime: new Date().toISOString(),
+            transcripts: [],
+            integrityEvents: [],
+          });
+        } catch (e) {
+          console.error("Error creating session record: ", e);
+        }
+      }
+
+      window.location.href = "interview.html";
+    };
+
+    window.handleSubscribe = (plan) => {
+      if (plan === "Pro") {
+        const options = {
+          key: "rzp_test_SKfIQ5a3SW1fi2", // Test API Key
+          amount: "80000", // Amount is in currency subunits (9 USD ~ 800 INR * 100 paise)
+          currency: "INR",
+          name: "MockMentor AI",
+          description: "Pro Achiever Subscription",
+          image: "favicon.svg",
+          handler: async function (response) {
+            alert(
+              "Payment Successful! Payment ID: " +
+              response.razorpay_payment_id +
+              "\n\nYour account is now upgraded to Pro Achiever.",
+            );
+            if (auth.currentUser) {
+              try {
+                await updateDoc(doc(db, "users", auth.currentUser.uid), {
+                  plan: "Pro",
+                });
+              } catch (e) {
+                console.error("Plan update failed", e);
+              }
+            }
+          },
+          prefill: {
+            name: document.getElementById("userName").innerText || "User",
+            email: auth.currentUser ? auth.currentUser.email : "",
+          },
+          theme: {
+            color: "#4f46e5", // Indigo 600
+          },
+        };
+        const rzp1 = new window.Razorpay(options);
+        rzp1.open();
+      } else {
+        alert(`Redirecting to sales team for the ${plan} Plan...`);
+      }
+    };
+
+    window.handleLogout = () =>
+      signOut(auth).then(() => (window.location.href = "home.html"));
+  </script>
+  <script src="scroll_tilt.js"></script>
+  <script src="glow_effect.js"></script>
+</body>
+
+</html>

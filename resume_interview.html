@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Resume AI - MockMentor</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
+  <script src="glow_effect.js"></script>
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap");
+
+    body {
+      background-color: #0f172a;
+      color: white;
+      font-family: "Inter", sans-serif;
+      overflow-x: hidden;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .glass-card {
+      background: rgba(30, 41, 59, 0.4);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .loader {
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-left-color: #ec4899;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen relative pb-20">
+  <canvas id="neuralCanvas" class="fixed top-0 left-0 w-full h-full -z-10"></canvas>
+
+  <nav class="sticky top-0 z-50 glass border-b border-white/10 px-6 py-4 mb-8">
+    <div class="max-w-7xl mx-auto flex items-center justify-between">
+      <div class="flex items-center gap-2 cursor-pointer group" onclick="window.location.href = 'dashboard.html'">
+        <div class="p-2 bg-pink-500/10 rounded-lg group-hover:bg-pink-500/20 transition">
+          <i data-lucide="arrow-left" class="text-pink-400 w-5 h-5"></i>
+        </div>
+        <span class="text-xl font-bold tracking-tight">Resume<span class="text-pink-400">AI</span></span>
+      </div>
+    </div>
+  </nav>
+
+  <main class="max-w-4xl mx-auto px-6">
+
+    <!-- Firestore Stats Box -->
+    <h2 class="text-xl font-bold mb-4 flex items-center gap-2 text-pink-400">
+      <i data-lucide="file-text" class="w-5 h-5"></i> Resume AI Stats
+    </h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+      <div class="glass p-6 rounded-2xl flex items-center gap-5">
+        <div class="p-4 bg-green-500/10 rounded-xl text-green-400 border border-green-500/20">
+          <i data-lucide="check-circle" class="w-8 h-8"></i>
+        </div>
+        <div>
+          <h3 class="text-3xl font-bold" id="resStatCount">0</h3>
+          <p class="text-sm text-gray-400">Interviews Completed</p>
+        </div>
+      </div>
+      <div class="glass p-6 rounded-2xl flex items-center gap-5">
+        <div class="p-4 bg-blue-500/10 rounded-xl text-blue-400 border border-blue-500/20">
+          <i data-lucide="trending-up" class="w-8 h-8"></i>
+        </div>
+        <div>
+          <h3 class="text-3xl font-bold" id="resStatScore">0%</h3>
+          <p class="text-sm text-gray-400">Average Score</p>
+        </div>
+      </div>
+      <div class="glass p-6 rounded-2xl flex items-center gap-5">
+        <div class="p-4 bg-purple-500/10 rounded-xl text-purple-400 border border-purple-500/20">
+          <i data-lucide="clock" class="w-8 h-8"></i>
+        </div>
+        <div>
+          <h3 class="text-3xl font-bold" id="resStatTime">0m</h3>
+          <p class="text-sm text-gray-400">Minutes Practiced</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upload Section (3D Tilt Layout) -->
+    <div class="tilt-container relative py-20 px-4 md:px-12 w-full flex flex-col items-center overflow-hidden"
+      style="perspective: 1200px; min-height: 80vh;">
+
+      <!-- Ambient Backglow -->
+      <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-pink-500/10 rounded-full blur-[100px] pointer-events-none z-0">
+      </div>
+      <div
+        class="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/10 rounded-full blur-[100px] pointer-events-none z-0">
+      </div>
+
+      <!-- Header moving separately -->
+      <div class="tilt-header text-center mb-12 z-20 relative w-full transition-transform duration-300 ease-out">
+        <h2 class="text-4xl md:text-5xl font-black mb-4">
+          Upload Your <span
+            class="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 to-purple-400">Resume</span>
+        </h2>
+        <p class="text-gray-400 max-w-xl mx-auto text-lg leading-relaxed">
+          Upload your TXT or perfectly parseable document. Our Netlify backend will parse your exact experience into
+          dynamic interview questions.
+        </p>
+      </div>
+
+      <!-- Rotating Card Container -->
+      <div
+        class="tilt-card max-w-4xl mx-auto w-[90%] md:w-full border-4 border-[#333] p-2 md:p-6 bg-[#222222] rounded-[30px] shadow-2xl z-10 relative origin-bottom will-change-transform">
+        <div id="uploadSection"
+          class="h-full w-full bg-slate-900 border border-white/5 rounded-2xl p-10 md:p-16 text-center shadow-inner relative overflow-hidden">
+          <div class="absolute top-0 right-0 w-64 h-64 bg-pink-500/5 rounded-full blur-[80px] pointer-events-none">
+          </div>
+
+          <div class="relative z-10 flex flex-col items-center">
+            <div
+              class="w-24 h-24 rounded-full bg-pink-500/10 border border-pink-500/20 flex items-center justify-center mb-8 shadow-[0_0_30px_rgba(236,72,153,0.2)]">
+              <i data-lucide="file-up" class="w-10 h-10 text-pink-400"></i>
+            </div>
+
+            <input type="file" id="resumeFile" class="hidden" accept=".txt,.pdf,.docx" onchange="uploadResume()">
+
+            <button onclick="document.getElementById('resumeFile').click()"
+              class="bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-500 hover:to-purple-500 text-white px-10 py-5 rounded-2xl font-black text-xl shadow-[0_0_30px_rgba(236,72,153,0.3)] hover:shadow-[0_0_40px_rgba(236,72,153,0.5)] flex items-center justify-center gap-3 transition transform hover:-translate-y-1 w-full max-w-md">
+              <i data-lucide="upload-cloud" class="w-6 h-6"></i> Choose File
+            </button>
+            <p class="text-xs text-gray-500 mt-6 font-mono font-semibold tracking-wider uppercase">Supports PDF, DOCX,
+              TXT</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="loadingSection" class="hidden glass-card p-12 rounded-3xl text-center">
+      <div class="loader mx-auto mb-6"></div>
+      <p class="text-xl font-bold text-white mb-2">Analyzing Experience...</p>
+      <p class="text-sm text-pink-400 font-mono tracking-wide">Contacting Netlify Backend</p>
+    </div>
+
+    <!-- Analysis Section -->
+    <div id="analysisSection" class="hidden space-y-8">
+      <div class="glass-card p-8 rounded-3xl border-t-4 border-t-pink-500 shadow-xl shadow-pink-500/5">
+        <h3 class="text-lg font-bold mb-4 text-pink-400 flex items-center gap-2"><i data-lucide="tag"
+            class="w-5 h-5"></i> Detected Skills</h3>
+        <div id="skillsContainer" class="flex flex-wrap gap-2"></div>
+      </div>
+
+      <div id="questionsContainer" class="space-y-6"></div>
+
+      <div id="paginationControls" class="hidden flex justify-between items-center pt-8">
+        <button id="prevBtn" onclick="prevQuestion()"
+          class="bg-slate-700 hover:bg-slate-600 px-6 py-3 rounded-xl text-sm font-bold transition flex items-center gap-2 text-white hidden">
+          <i data-lucide="chevron-left" class="w-4 h-4"></i> Previous
+        </button>
+        <div class="ml-auto flex gap-4">
+          <button id="nextBtn" onclick="nextQuestion()"
+            class="bg-indigo-600 hover:bg-indigo-500 px-6 py-3 rounded-xl text-sm font-bold transition flex items-center gap-2 text-white hidden shadow-[0_0_15px_rgba(79,70,229,0.5)]">
+            Next <i data-lucide="chevron-right" class="w-4 h-4"></i>
+          </button>
+          <button id="submitAllBtn" onclick="finishInterview()"
+            class="bg-pink-600 hover:bg-pink-500 px-8 py-3 rounded-xl font-bold transition shadow-[0_0_15px_rgba(236,72,153,0.5)] flex items-center gap-2 text-white hidden">
+            <i data-lucide="check-circle" class="w-5 h-5"></i> Submit All
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer class="py-6 border-t border-white/5 text-center text-gray-500 text-sm bg-transparent mt-12 w-full">
+    <p>&copy; 2026 MockMentor AI. Built with ❤️ By Jai Jadhav (JJ.28).</p>
+  </footer>
+
+  <script type="module">
+    import { auth, db, doc, setDoc, updateDoc, increment, onSnapshot, onAuthStateChanged } from "./firebase-config.js";
+    window.lucide.createIcons();
+
+    // Background Anim
+    const canvas = document.getElementById("neuralCanvas");
+    const ctx = canvas.getContext("2d");
+    let width = canvas.width = window.innerWidth, height = canvas.height = window.innerHeight;
+    class Particle { constructor() { this.reset(); } reset() { this.x = Math.random() * width; this.y = Math.random() * height; this.vx = (Math.random() - 0.5) * 0.5; this.vy = (Math.random() - 0.5) * 0.5; this.age = 0; this.life = 200; } update() { this.x += this.vx; this.y += this.vy; this.age++; if (this.age > this.life) this.reset(); } draw() { ctx.fillStyle = `rgba(236, 72, 153, ${0.3 * (1 - this.age / this.life)})`; ctx.fillRect(this.x, this.y, 2, 2); } }
+    const particles = Array(100).fill().map(() => new Particle());
+    function loop() { ctx.clearRect(0, 0, width, height); particles.forEach(p => { p.update(); p.draw(); }); requestAnimationFrame(loop); }
+    loop();
+
+    const state = {
+      scores: [],
+      startTime: Date.now()
+    };
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        onSnapshot(doc(db, "users", user.uid), (doc) => {
+          if (doc.exists()) {
+            const data = doc.data();
+            const rc = data.resumeInterviewsCompleted || 0;
+            document.getElementById("resStatCount").innerText = rc;
+            document.getElementById("resStatScore").innerText = rc > 0 ? Math.round((data.resumeTotalScore || 0) / rc) + "%" : "0%";
+            document.getElementById("resStatTime").innerText = (data.resumePracticeMinutes || 0) + "m";
+          }
+        });
+      } else {
+        window.location.href = "index.html";
+      }
+    });
+
+    // Setup PDF.js worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js";
+
+    const SKILLS_DB = [
+      "python", "java", "c++", "sql", "mysql", "mongodb",
+      "machine learning", "deep learning", "nlp",
+      "pandas", "numpy", "react", "node.js", "express",
+      "flask", "django", "aws", "docker", "kubernetes",
+      "javascript", "typescript", "html", "css", "tailwind", "git"
+    ];
+
+    function extractSkills(text) {
+      const lowerText = text.toLowerCase();
+      return SKILLS_DB.filter(skill => lowerText.includes(skill));
+    }
+
+    async function generateQuestionsGroq(text) {
+      const prompt = `Based on this resume:\n\n${text.substring(0, 1500)}\n\nGenerate:\n- 5 Technical questions\n- 3 Behavioral questions\n- 2 Scenario questions\n\nReturn a numbered list only. No extra conversational text or intro block.`;
+
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer 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"
+        },
+        body: JSON.stringify({
+          model: "llama-3.1-8b-instant",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.7
+        })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message || JSON.stringify(data.error));
+      let content = data.choices[0].message.content;
+      // Extract code block if Groq arbitrarily wrapped it
+      content = content.replace(/```json/g, "").replace(/```/g, "");
+      let lines = content.split("\n").filter(q => q.trim().length > 10);
+      return lines.slice(0, 10);
+    }
+
+    async function extractTextFromFile(file) {
+      if (file.type === "application/pdf" || file.name.endsWith(".pdf")) {
+        const arrayBuffer = await file.arrayBuffer();
+        const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        let fullText = "";
+        for (let i = 1; i <= Math.min(pdf.numPages, 3); i++) {
+          const page = await pdf.getPage(i);
+          const content = await page.getTextContent();
+          fullText += content.items.map(item => item.str).join(" ") + " ";
+        }
+        return fullText;
+      } else if (file.name.endsWith(".docx")) {
+        const arrayBuffer = await file.arrayBuffer();
+        const result = await mammoth.extractRawText({ arrayBuffer: arrayBuffer });
+        return result.value;
+      } else {
+        return await file.text();
+      }
+    }
+
+    window.uploadResume = async () => {
+      const file = document.getElementById("resumeFile").files[0];
+      if (!file) return;
+
+      document.getElementById("uploadSection").classList.add("hidden");
+      document.getElementById("loadingSection").classList.remove("hidden");
+
+      try {
+        const text = await extractTextFromFile(file);
+        const skills = extractSkills(text);
+        const questions = await generateQuestionsGroq(text);
+
+        document.getElementById("loadingSection").classList.add("hidden");
+        document.getElementById("analysisSection").classList.remove("hidden");
+
+        const skillsCont = document.getElementById("skillsContainer");
+        skills.forEach(s => {
+          skillsCont.innerHTML += `<span class="bg-pink-500/20 text-pink-300 border border-pink-500/30 px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wide">${s}</span>`;
+        });
+        if (skills.length === 0) {
+          skillsCont.innerHTML += `<span class="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-3 py-1 rounded-md text-xs font-bold uppercase tracking-wide">General Candidate</span>`;
+        }
+
+        const qCont = document.getElementById("questionsContainer");
+        qCont.innerHTML = "";
+        questions.forEach((q, i) => {
+          qCont.innerHTML += `
+                      <div class="glass-card p-6 md:p-8 rounded-2xl relative overflow-hidden hidden" id="qblock-${i}">
+                          <div class="absolute top-0 left-0 w-2 h-full bg-indigo-500"></div>
+                          <p class="text-lg font-semibold mb-4 text-white"><span class="text-indigo-400 mr-2 font-black">Q${i + 1}/${questions.length}.</span> ${q}</p>
+                          <textarea id="ans-${i}" class="w-full bg-slate-900/60 border border-white/10 rounded-xl p-4 text-sm text-gray-300 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 outline-none mb-4 resize-none" rows="4" placeholder="Type your detailed answer here..."></textarea>
+                          <div class="flex justify-end">
+                              <button onclick="submitAnswer(${i}, \`${q.replace(/'/g, "\\'").replace(/"/g, "&quot;")}\`)" id="btn-${i}" class="bg-indigo-600 hover:bg-indigo-500 px-6 py-2 rounded-lg text-sm font-bold transition flex items-center gap-2">
+                                  <i data-lucide="send" class="w-4 h-4"></i> Evaluate
+                              </button>
+                          </div>
+                          
+                          <div id="feedback-${i}" class="mt-4 hidden p-5 rounded-xl bg-slate-800/80 border border-white/5 space-y-4 shadow-inner"></div>
+                      </div>
+                  `;
+        });
+
+        window.totalQuestions = questions.length;
+        window.currentQ = 0;
+        window.evaluatedStatus = new Array(questions.length).fill(false);
+        document.getElementById("paginationControls").classList.remove("hidden");
+        window.updatePaginationUI();
+
+        window.lucide.createIcons();
+      } catch (e) {
+        alert("Error analyzing resume: " + e.message);
+        document.getElementById("loadingSection").classList.add("hidden");
+        document.getElementById("uploadSection").classList.remove("hidden");
+        console.error("Resume parsing error:", e);
+      }
+    };
+
+    async function evaluateAnswerGroq(question, answer) {
+      const prompt = `Question: ${question}\nAnswer: ${answer}\n\nGive response strictly in this format:\nScore: X/10\nFeedback: ...\nFollow-up: ...`;
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer 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"
+        },
+        body: JSON.stringify({
+          model: "llama-3.1-8b-instant",
+          messages: [{ role: "user", content: prompt }],
+          temperature: 0.3
+        })
+      });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error.message);
+
+      let score = 5; let feedback = "Good effort."; let followup = "Could you expand on that?";
+      data.choices[0].message.content.split("\n").forEach(line => {
+        if (line.includes("Score")) { try { score = parseInt(line.split(":")[1].split("/")[0].trim()); } catch (e) { } }
+        else if (line.includes("Feedback")) { feedback = line.replace("Feedback:", "").trim(); }
+        else if (line.includes("Follow-up")) { followup = line.replace("Follow-up:", "").trim(); }
+      });
+      return { score, feedback, followup };
+    }
+
+    window.submitAnswer = async (idx, questionText) => {
+      const ansBox = document.getElementById(`ans-${idx}`);
+      const answerText = ansBox.value.trim();
+      if (!answerText) return alert("Please type an answer first.");
+
+      const btn = document.getElementById(`btn-${idx}`);
+      btn.innerHTML = `<i data-lucide="loader" class="w-4 h-4 animate-spin"></i> Evaluating...`;
+      btn.disabled = true;
+      window.lucide.createIcons();
+
+      try {
+        const data = await evaluateAnswerGroq(questionText, answerText);
+
+        // data.score is out of 10.
+        const scorePercent = Math.min(100, (data.score * 10));
+        state.scores.push(scorePercent);
+
+        let badgeColor = "text-green-400";
+        let badgeBg = "bg-green-500/20";
+        if (scorePercent < 50) { badgeColor = "text-red-400"; badgeBg = "bg-red-500/20"; }
+        else if (scorePercent < 80) { badgeColor = "text-yellow-400"; badgeBg = "bg-yellow-500/20"; }
+
+        const fb = document.getElementById(`feedback-${idx}`);
+        fb.classList.remove("hidden");
+        fb.innerHTML = `
+                  <div class="flex flex-col md:flex-row items-start md:items-center gap-4">
+                      <div class="w-16 h-16 shrink-0 rounded-2xl ${badgeBg} flex flex-col items-center justify-center font-black ${badgeColor} shadow-lg">
+                          <span class="text-xl">${data.score}</span><span class="text-[10px] uppercase tracking-widest opacity-70 -mt-1">/10</span>
+                      </div>
+                      <div class="flex-1">
+                          <p class="text-sm text-gray-300 leading-relaxed"><strong class="text-white">Feedback:</strong> ${data.feedback}</p>
+                      </div>
+                  </div>
+                  <div class="p-3 bg-indigo-600/10 border-l-2 border-indigo-500 rounded-r-lg mt-2">
+                       <p class="text-sm text-indigo-200"><strong>Follow-up:</strong> ${data.followup}</p>
+                  </div>
+              `;
+        btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> Evaluated`;
+        btn.className = "bg-green-600 px-6 py-2 rounded-lg text-sm font-bold flex items-center gap-2 cursor-pointer";
+        btn.onclick = () => alert("Already evaluated");
+        window.lucide.createIcons();
+
+        window.evaluatedStatus[idx] = true;
+        window.updatePaginationUI();
+      } catch (e) {
+        alert("Error evaluating on Netlify.");
+        btn.innerHTML = `<i data-lucide="send" class="w-4 h-4"></i> Evaluate`;
+        btn.disabled = false;
+        window.lucide.createIcons();
+      }
+    };
+
+    window.finishInterview = async () => {
+      if (!auth.currentUser) return window.location.href = "dashboard.html";
+
+      const mins = Math.max(1, Math.round((Date.now() - state.startTime) / 60000));
+      let avg = 0;
+      if (state.scores.length > 0) {
+        avg = state.scores.reduce((a, b) => a + b, 0) / state.scores.length;
+      }
+
+      try {
+        document.body.innerHTML += `<div class="fixed inset-0 z-[100] bg-slate-900/90 backdrop-blur-sm flex flex-col items-center justify-center"><div class="loader mb-4"></div><p class="font-bold text-xl">Saving Stats...</p></div>`;
+
+        await setDoc(doc(db, "users", auth.currentUser.uid), {
+          resumeInterviewsCompleted: increment(1),
+          resumeTotalScore: increment(Math.round(avg)),
+          resumePracticeMinutes: increment(mins)
+        }, { merge: true });
+        window.location.href = "dashboard.html";
+      } catch (e) {
+        console.error(e);
+        alert("Failed to save final score.");
+      }
+    };
+
+    window.updatePaginationUI = () => {
+      for (let i = 0; i < window.totalQuestions; i++) {
+        const el = document.getElementById(`qblock-${i}`);
+        if (el) el.classList.add("hidden");
+      }
+      const currentEl = document.getElementById(`qblock-${window.currentQ}`);
+      if (currentEl) currentEl.classList.remove("hidden");
+
+      const prevBtn = document.getElementById("prevBtn");
+      if (window.currentQ > 0) prevBtn.classList.remove("hidden");
+      else prevBtn.classList.add("hidden");
+
+      const nextBtn = document.getElementById("nextBtn");
+      const submitAllBtn = document.getElementById("submitAllBtn");
+      const isEvaluated = window.evaluatedStatus[window.currentQ];
+
+      if (window.currentQ < window.totalQuestions - 1) {
+        submitAllBtn.classList.add("hidden");
+        if (isEvaluated) nextBtn.classList.remove("hidden");
+        else nextBtn.classList.add("hidden");
+      } else {
+        nextBtn.classList.add("hidden");
+        if (isEvaluated) submitAllBtn.classList.remove("hidden");
+        else submitAllBtn.classList.add("hidden");
+      }
+    };
+
+    window.nextQuestion = () => {
+      if (window.currentQ < window.totalQuestions - 1) {
+        window.currentQ++;
+        window.updatePaginationUI();
+      }
+    };
+
+    window.prevQuestion = () => {
+      if (window.currentQ > 0) {
+        window.currentQ--;
+        window.updatePaginationUI();
+      }
+    };
+  </script>
+  <script type="module" src="helpdesk.js"></script>
+  <script src="anti_cheat.js"></script>
+  <script src="scroll_tilt.js"></script>
+  <script src="glow_effect.js"></script>
+</body>
+
+</html>

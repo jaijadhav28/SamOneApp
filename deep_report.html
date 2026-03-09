@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Deep MockMentor Analysis</title>
+    <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap");
+
+        body {
+            font-family: "Inter", sans-serif;
+            background: #0f172a;
+            color: white;
+            overflow-x: hidden;
+        }
+
+        .glass-card {
+            background: rgba(30, 41, 59, 0.4);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+    </style>
+</head>
+
+<body class="min-h-screen relative flex flex-col items-center justify-center py-12 px-4">
+    <canvas id="neuralCanvas" class="fixed top-0 left-0 w-full h-full -z-10"></canvas>
+
+    <div class="w-full max-w-4xl space-y-8">
+
+        <div class="text-center">
+            <h1
+                class="text-4xl font-extrabold mb-2 text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-indigo-500">
+                Performance Dashboard
+            </h1>
+            <p class="text-gray-400">Deep & Easy MockMentor AI Evaluation</p>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="glass-card p-6 rounded-2xl text-center shadow-lg border-t-4 border-t-cyan-500">
+                <h3 class="text-gray-400 text-sm font-semibold mb-2 uppercase tracking-wider"><i data-lucide="brain"
+                        class="inline w-4 h-4 mr-1"></i> Cognitive</h3>
+                <div class="text-5xl font-black text-white" id="cogScore">0%</div>
+            </div>
+            <div class="glass-card p-6 rounded-2xl text-center shadow-lg border-t-4 border-t-indigo-500">
+                <h3 class="text-gray-400 text-sm font-semibold mb-2 uppercase tracking-wider"><i data-lucide="code-2"
+                        class="inline w-4 h-4 mr-1"></i> Coding</h3>
+                <div class="text-5xl font-black text-white" id="codingScore">0%</div>
+            </div>
+            <div class="glass-card p-6 rounded-2xl text-center shadow-lg border-t-4 border-t-purple-500">
+                <h3 class="text-gray-400 text-sm font-semibold mb-2 uppercase tracking-wider"><i
+                        data-lucide="trending-up" class="inline w-4 h-4 mr-1"></i> Overall</h3>
+                <div class="text-5xl font-black text-white" id="overallScore">0%</div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div class="glass-card p-6 rounded-2xl flex flex-col justify-center items-center h-80">
+                <canvas id="radarChart"></canvas>
+            </div>
+
+            <div class="glass-card p-8 rounded-2xl flex flex-col justify-center items-center text-center space-y-4">
+                <h3 class="text-xl font-bold text-gray-300">Final Recommendation</h3>
+                <div id="badgeArea"
+                    class="p-6 rounded-2xl border-2 w-full max-w-xs transition-all flex flex-col items-center justify-center gap-2">
+                    <!-- Injected by JS -->
+                </div>
+                <p class="text-sm text-gray-400 mt-4 max-w-sm" id="badgeDesc"></p>
+                <button onclick="window.location.href='dashboard.html'"
+                    class="mt-4 bg-slate-700 hover:bg-slate-600 px-6 py-2 rounded-lg text-sm font-bold transition">Return
+                    to Dashboard</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="module">
+        import { auth, db, doc, setDoc, increment, onAuthStateChanged } from "./firebase-config.js";
+        if (window.lucide) window.lucide.createIcons();
+
+        // Background Canvas
+        const canvas = document.getElementById("neuralCanvas");
+        const ctx = canvas.getContext("2d");
+        let width = canvas.width = window.innerWidth, height = canvas.height = window.innerHeight;
+        class Particle { constructor() { this.reset(); } reset() { this.x = Math.random() * width; this.y = Math.random() * height; this.vx = (Math.random() - 0.5) * 0.5; this.vy = (Math.random() - 0.5) * 0.5; this.age = 0; this.life = 200; } update() { this.x += this.vx; this.y += this.vy; this.age++; if (this.age > this.life) this.reset(); } draw() { ctx.fillStyle = `rgba(6, 182, 212, ${0.1 * (1 - this.age / this.life)})`; ctx.fillRect(this.x, this.y, 2, 2); } }
+        const particles = Array(60).fill().map(() => new Particle());
+        function loop() { ctx.clearRect(0, 0, width, height); particles.forEach(p => { p.update(); p.draw(); }); requestAnimationFrame(loop); }
+        loop();
+
+        // Load Data
+        const c_score = parseFloat(localStorage.getItem('cognitive_percent')) || 0;
+        const code_score = parseFloat(localStorage.getItem('coding_percent')) || 0;
+
+        // Penalize Overall heavily if integrity violations exist
+        const c_fails = parseInt(localStorage.getItem('cognitive_violations')) || 0;
+        const code_fails = parseInt(localStorage.getItem('coding_violations')) || 0;
+        const total_violations = c_fails + code_fails;
+        const penalty = total_violations * 10;
+
+        let overall = ((c_score + code_score) / 2) - penalty;
+        if (overall < 0) overall = 0;
+
+        // Display
+        document.getElementById('cogScore').innerText = Math.round(c_score) + '%';
+        document.getElementById('codingScore').innerText = Math.round(code_score) + '%';
+        document.getElementById('overallScore').innerText = Math.round(overall) + '%';
+
+        // Badge Logic
+        const badgeArea = document.getElementById('badgeArea');
+        const badgeDesc = document.getElementById('badgeDesc');
+
+        if (total_violations >= 4) {
+            badgeArea.className = "p-6 rounded-2xl border-2 w-full max-w-xs transition-all border-red-500 bg-red-500/10 text-red-400 flex flex-col items-center gap-2";
+            badgeArea.innerHTML = `<i data-lucide="shield-alert" class="w-10 h-10"></i><span class="text-2xl font-black">Disqualified</span>`;
+            badgeDesc.innerText = "You triggered multiple cheating and integrity violations during the assessment.";
+        }
+        else if (overall >= 80) {
+            badgeArea.className = "p-6 rounded-2xl border-2 w-full max-w-xs transition-all border-yellow-500 bg-yellow-500/10 text-yellow-400 flex flex-col items-center gap-2";
+            badgeArea.innerHTML = `<i data-lucide="trophy" class="w-10 h-10"></i><span class="text-2xl font-black">Elite</span>`;
+            badgeDesc.innerText = "Outstanding performance in both logical reasoning and coding implementation.";
+        }
+        else if (overall >= 60) {
+            badgeArea.className = "p-6 rounded-2xl border-2 w-full max-w-xs transition-all border-green-500 bg-green-500/10 text-green-400 flex flex-col items-center gap-2";
+            badgeArea.innerHTML = `<i data-lucide="medal" class="w-10 h-10"></i><span class="text-2xl font-black">Advanced</span>`;
+            badgeDesc.innerText = "Solid results. Keep practicing complex edge cases to hit Elite.";
+        }
+        else if (overall >= 40) {
+            badgeArea.className = "p-6 rounded-2xl border-2 w-full max-w-xs transition-all border-blue-500 bg-blue-500/10 text-blue-400 flex flex-col items-center gap-2";
+            badgeArea.innerHTML = `<i data-lucide="trending-up" class="w-10 h-10"></i><span class="text-2xl font-black">Intermediate</span>`;
+            badgeDesc.innerText = "You have the basics down, but there's room to improve speed and logic.";
+        }
+        else {
+            badgeArea.className = "p-6 rounded-2xl border-2 w-full max-w-xs transition-all border-slate-500 bg-slate-500/10 text-slate-400 flex flex-col items-center gap-2";
+            badgeArea.innerHTML = `<i data-lucide="book-open" class="w-10 h-10"></i><span class="text-2xl font-black">Beginner</span>`;
+            badgeDesc.innerText = "Keep studying! Focus heavily on Python syntax and basic puzzle solving.";
+        }
+
+        if (window.lucide) window.lucide.createIcons();
+
+        // Save Results to Firestore
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                try {
+                    const userRef = doc(db, "users", user.uid);
+                    await setDoc(userRef, {
+                        deepInterviewsCompleted: increment(1),
+                        deepTotalScore: increment(Math.round(overall))
+                    }, { merge: true });
+                    console.log("Deep AI Stats Saved Successfully!");
+                } catch (e) {
+                    console.error("Save Failed:", e);
+                }
+            } else {
+                console.warn("User not logged in - Stats not saved.");
+            }
+        });
+
+        // Radar Chart
+        const ctxRadar = document.getElementById('radarChart').getContext('2d');
+
+        // Invert violation score for graph (0 violations = 100 pt, 4 violations = 0 pt)
+        const integrityScore = Math.max(0, 100 - (total_violations * 25));
+
+        new Chart(ctxRadar, {
+            type: "radar",
+            data: {
+                labels: ["Cognitive Aptitude", "Coding Output", "Overall", "Integrity & Focus"],
+                datasets: [{
+                    label: "Performance Metrics",
+                    data: [c_score, code_score, overall, integrityScore],
+                    backgroundColor: "rgba(6, 182, 212, 0.2)",
+                    borderColor: "#06b6d4",
+                    pointBackgroundColor: "#818cf8",
+                    pointHoverBackgroundColor: "#fff",
+                    borderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    r: {
+                        angleLines: { color: 'rgba(255, 255, 255, 0.1)' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                        pointLabels: { color: '#94a3b8', font: { size: 12, family: 'Inter' } },
+                        ticks: { display: false, min: 0, max: 100, stepSize: 20 }
+                    }
+                },
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+    </script>
+    <footer class="py-6 border-t border-white/5 text-center text-gray-500 text-sm bg-slate-900 mt-12 w-full">
+        <p>&copy; 2026 MockMentor AI. Built with ❤️ By Jai Jadhav (JJ.28).</p>
+    </footer>
+</body>
+
+</html>
