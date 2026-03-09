@@ -4,6 +4,9 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 // Screens
 import HomeScreen from './src/screens/HomeScreen';
+import DashboardScreen from './src/screens/DashboardScreen';
+import CognitiveTestScreen from './src/screens/CognitiveTestScreen';
+import ResumeInterviewScreen from './src/screens/ResumeInterviewScreen';
 import InterviewScreen from './src/screens/InterviewScreen';
 import ReportScreen from './src/screens/ReportScreen';
 import { InterviewProvider } from './src/context/InterviewContext';
@@ -22,6 +25,9 @@ export default function App() {
           }}
         >
           <Stack.Screen name="Home" component={HomeScreen} />
+          <Stack.Screen name="Dashboard" component={DashboardScreen} />
+          <Stack.Screen name="Cognitive" component={CognitiveTestScreen} />
+          <Stack.Screen name="ResumeInterview" component={ResumeInterviewScreen} />
           <Stack.Screen name="Interview" component={InterviewScreen} />
           <Stack.Screen name="Report" component={ReportScreen} />
         </Stack.Navigator>
