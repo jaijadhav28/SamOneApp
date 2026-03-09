@@ -1,4 +1,5 @@
 import React from 'react';
+// MockMentor AI v3.0 - Ready for Deployment (Netlify: mockmentorai.netlify.app)
 import { NavigationContainer, DarkTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
