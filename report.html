@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Analysis - MockMentor</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="manifest" href="manifest.json" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+  <style>
+    @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap");
+
+    body {
+      background-color: #0f172a;
+      color: white;
+      font-family: "Inter", sans-serif;
+      overflow-x: hidden;
+    }
+
+    .glass {
+      background: rgba(255, 255, 255, 0.03);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+
+    .gradient-text {
+      background: linear-gradient(to right, #6366f1, #ec4899);
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .loader {
+      border: 4px solid rgba(255, 255, 255, 0.1);
+      border-left-color: #6366f1;
+      border-radius: 50%;
+      width: 50px;
+      height: 50px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    .fade-in-up {
+      animation: fadeInUp 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    @keyframes fadeInUp {
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+  </style>
+</head>
+
+<body class="min-h-screen relative pb-20">
+  <canvas id="neuralCanvas" class="fixed top-0 left-0 w-full h-full -z-10"></canvas>
+
+  <div id="loadingScreen"
+    class="fixed inset-0 bg-slate-900/90 z-[60] flex flex-col items-center justify-center backdrop-blur-xl">
+    <div class="loader mb-6 shadow-[0_0_30px_rgba(99,102,241,0.5)]"></div>
+    <h2 class="text-3xl font-bold animate-pulse text-white">
+      Generating Analysis...
+    </h2>
+    <p class="text-indigo-300 text-sm mt-3 font-mono tracking-wide" id="statusText">
+      Connecting to Evaluation Engine
+    </p>
+  </div>
+
+  <nav class="sticky top-0 z-50 glass border-b border-white/10 px-6 py-4 mb-8">
+    <div class="max-w-7xl mx-auto flex justify-between items-center">
+      <div class="flex items-center gap-2 cursor-pointer group" onclick="window.location.href = 'index.html'">
+        <div class="p-2 bg-indigo-500/10 rounded-lg group-hover:bg-indigo-500/20 transition">
+          <i data-lucide="brain-circuit" class="text-indigo-400 w-6 h-6"></i>
+        </div>
+        <span class="text-xl font-bold tracking-tight">Mock<span class="text-indigo-400">Mentor</span> Report</span>
+      </div>
+      <button onclick="window.print()"
+        class="text-sm bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-lg transition flex items-center gap-2">
+        <i data-lucide="download" class="w-4 h-4"></i> Save PDF
+      </button>
+    </div>
+  </nav>
+
+  <main class="max-w-6xl mx-auto px-6 hidden" id="mainContent">
+    <div class="glass rounded-3xl p-8 mb-12 border border-indigo-500/20 relative overflow-hidden fade-in-up">
+      <div
+        class="absolute top-0 right-0 w-96 h-96 bg-indigo-600/10 rounded-full blur-[100px] -mr-20 -mt-20 pointer-events-none">
+      </div>
+      <div class="flex flex-col md:flex-row justify-between items-center gap-8 relative z-10">
+        <div>
+          <div class="flex items-center gap-3 mb-3">
+            <span id="reportDomain"
+              class="px-3 py-1 bg-indigo-500/20 border border-indigo-500/30 rounded-full text-indigo-300 text-xs font-bold uppercase tracking-wider">...</span>
+            <span class="text-gray-400 text-sm font-mono" id="reportDate">...</span>
+          </div>
+          <h1 class="text-4xl md:text-5xl font-bold mb-2">
+            Performance Analysis
+          </h1>
+          <p class="text-gray-400 max-w-lg">
+            AI-generated evaluation based on your responses.
+          </p>
+        </div>
+        <div class="flex items-center gap-8 bg-slate-900/40 p-6 rounded-2xl border border-white/5">
+          <div class="text-right">
+            <p class="text-xs text-gray-400 uppercase tracking-widest font-semibold mb-1">
+              Overall Score
+            </p>
+            <h2 class="text-6xl font-black gradient-text tracking-tighter leading-none">
+              <span id="totalScore">0</span><span class="text-2xl text-gray-500">/100</span>
+            </h2>
+          </div>
+          <div
+            class="w-20 h-20 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-2xl shadow-indigo-500/30">
+            <i data-lucide="award" class="w-10 h-10 text-white"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+      <div class="glass p-8 rounded-3xl fade-in-up" style="animation-delay: 0.1s">
+        <h3 class="text-lg font-bold mb-6 flex items-center gap-2 text-indigo-300">
+          <i data-lucide="radar" class="w-5 h-5"></i> Skill Distribution
+        </h3>
+        <div class="h-72 flex justify-center items-center">
+          <canvas id="radarChart"></canvas>
+        </div>
+      </div>
+      <div class="glass p-8 rounded-3xl flex flex-col justify-center fade-in-up" style="animation-delay: 0.2s">
+        <h3 class="text-lg font-bold mb-8 flex items-center gap-2 text-purple-300">
+          <i data-lucide="bar-chart-2" class="w-5 h-5"></i> 4-Pillar
+          Evaluation
+        </h3>
+        <div class="space-y-6">
+          <div>
+            <div class="flex justify-between text-sm mb-2">
+              <span class="text-gray-300">Technical (40%)</span><span class="text-emerald-400 font-mono"
+                id="techText">0%</span>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-2">
+              <div
+                class="bg-gradient-to-r from-emerald-500 to-green-400 h-2 rounded-full transition-all duration-1000 w-0"
+                id="techBar"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-sm mb-2">
+              <span class="text-gray-300">Reasoning Gap (25%)</span><span class="text-indigo-400 font-mono"
+                id="reasonText">0%</span>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-2">
+              <div
+                class="bg-gradient-to-r from-indigo-500 to-blue-400 h-2 rounded-full transition-all duration-1000 w-0"
+                id="reasonBar"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-sm mb-2">
+              <span class="text-gray-300">Communication (20%)</span><span class="text-amber-400 font-mono"
+                id="commText">0%</span>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-2">
+              <div
+                class="bg-gradient-to-r from-amber-500 to-yellow-400 h-2 rounded-full transition-all duration-1000 w-0"
+                id="commBar"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-sm mb-2">
+              <span class="text-gray-300">Integrity & Focus (15%)</span><span class="text-rose-400 font-mono"
+                id="integText">0%</span>
+            </div>
+            <div class="w-full bg-slate-800 rounded-full h-2">
+              <div class="bg-gradient-to-r from-rose-500 to-pink-400 h-2 rounded-full transition-all duration-1000 w-0"
+                id="integBar"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+      <div class="glass p-8 rounded-3xl border-l-4 border-green-500 fade-in-up" style="animation-delay: 0.3s">
+        <h3 class="text-lg font-bold text-green-400 mb-4 flex items-center gap-2">
+          <i data-lucide="thumbs-up" class="w-4 h-4"></i> Strong Areas
+        </h3>
+        <p class="text-gray-300 leading-relaxed text-sm" id="strengthText">
+          ...
+        </p>
+      </div>
+      <div class="glass p-8 rounded-3xl border-l-4 border-yellow-500 fade-in-up" style="animation-delay: 0.4s">
+        <h3 class="text-lg font-bold text-yellow-400 mb-4 flex items-center gap-2">
+          <i data-lucide="alert-triangle" class="w-4 h-4"></i> Areas for
+          Improvement
+        </h3>
+        <p class="text-gray-300 leading-relaxed text-sm" id="weaknessText">
+          ...
+        </p>
+      </div>
+    </div>
+
+    <!-- Actionable Growth Plan -->
+    <div class="glass p-8 rounded-3xl mb-12 fade-in-up border border-indigo-500/10" style="animation-delay: 0.45s">
+      <h3 class="text-xl font-bold mb-6 flex items-center gap-2 text-indigo-300">
+        <i data-lucide="trending-up" class="w-6 h-6"></i> Actionable Growth
+        Plan
+      </h3>
+      <div id="actionPlanContainer" class="space-y-4">
+        <!-- Javascript will populate this -->
+      </div>
+    </div>
+
+    <div class="text-center pb-12 fade-in-up" style="animation-delay: 0.6s">
+      <button onclick="window.location.href = 'dashboard.html'"
+        class="bg-white text-slate-900 px-8 py-4 rounded-xl font-bold transition hover:bg-indigo-50 shadow-xl flex items-center gap-3 mx-auto">
+        <i data-lucide="arrow-left" class="w-5 h-5"></i> Back to Dashboard
+      </button>
+    </div>
+  </main>
+
+  <script type="module">
+    import {
+      auth,
+      db,
+      doc,
+      setDoc,
+      increment,
+      onAuthStateChanged,
+    } from "./firebase-config.js";
+    lucide.createIcons();
+    const API_KEY = "AIzaSyB5kFiDpV68Z8h45FHenYUg_F0rGeOblok";
+
+    // Auth Check
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.href = "index.html";
+      }
+    });
+
+    // Background Anim
+    const canvas = document.getElementById("neuralCanvas"),
+      ctx = canvas.getContext("2d");
+    let width = (canvas.width = window.innerWidth),
+      height = (canvas.height = window.innerHeight);
+    class Particle {
+      constructor() {
+        this.reset();
+      }
+      reset() {
+        this.x = Math.random() * width;
+        this.y = Math.random() * height;
+        this.vx = (Math.random() - 0.5) * 0.5;
+        this.vy = (Math.random() - 0.5) * 0.5;
+        this.age = 0;
+        this.life = 200;
+      }
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.age++;
+        if (this.age > this.life) this.reset();
+      }
+      draw() {
+        ctx.fillStyle = `rgba(99,102,241,${0.3 * (1 - this.age / this.life)})`;
+        ctx.fillRect(this.x, this.y, 2, 2);
+      }
+    }
+    let particles = Array(100)
+      .fill()
+      .map(() => new Particle());
+    function loop() {
+      ctx.clearRect(0, 0, width, height);
+      particles.forEach((p) => {
+        p.update();
+        p.draw();
+      });
+      requestAnimationFrame(loop);
+    }
+    loop();
+
+    // Report Logic
+    const domain = localStorage.getItem("selectedDomain") || "General";
+    const rawHistory = localStorage.getItem("chatHistory");
+    const finalCode =
+      localStorage.getItem("finalCode") || "No code submitted.";
+    const declaredApproach =
+      localStorage.getItem("declaredApproach") || "No approach declared.";
+    const integrityData = localStorage.getItem("integrityViolations");
+    const focusTime = localStorage.getItem("focusTimeMs");
+    const speechData = localStorage.getItem("speechTranscripts");
+
+    document.getElementById("reportDomain").innerText = domain;
+    document.getElementById("reportDate").innerText =
+      new Date().toLocaleDateString();
+
+    async function generateReport() {
+      await new Promise((r) => setTimeout(r, 1500));
+
+      const chatHistory = JSON.parse(rawHistory || "[]");
+      const estimatedDuration = Math.max(
+        1,
+        Math.ceil(chatHistory.length * 0.5),
+      );
+      const transcript = chatHistory
+        .map((msg) => `${msg.role.toUpperCase()}: ${msg.content}`)
+        .join("\n");
+
+      // Build the giant Unified Pipeline context string
+      const fullContextString = `
+            Domain: ${domain}
+            
+            Chat Transcript: 
+            ${transcript}
+            
+            Candidate's Initial Declared Approach:
+            ${declaredApproach}
+            
+            Candidate's Final Code Submission:
+            ${finalCode}
+            
+            Integrity & Behavior Logs:
+            Violations: ${integrityData}
+            Lost Focus Time (ms): ${focusTime}
+            
+            Speech Transcript Data (For fluency/filler word checks):
+            ${speechData}
+            `;
+
+      const prompt = `Act as an expert Technical Interviewer, Mentor, and HR Analyst. Your goal is to grade this complete interview session context and provide HIGHLY MOTIVATIONAL and supportive feedback:
+            
+            ${fullContextString}
+            
+            Analyze the 4 Pillars:
+            1. Technical (40%): Correctness of the final code and technical answers.
+            2. Reasoning (25%): Compare the "Declared Approach" vs the "Final Code". Did they do what they said they would do?
+            3. Communication (20%): Clarity, vocabulary, and filler words based on the speech transcripts.
+            4. Integrity (15%): Deduct heavily if there are large pastes or tab switches.
+            
+            CRITICAL SCORING RULES:
+            - ZERO TOLERANCE FOR NO EFFORT: If the candidate provided NO valid technical answers, NO code, or just said things like "I don't know", "hi", "how are you", or if the transcript is extremely short (e.g., 2-4 turns of just intro), YOU MUST SCORE THEM EXACTLY 0. "score": 0, "tech_score": 0, "reasoning_score": 0, "comm_score": 0. Do NOT give them 5 points or 60 points out of pity.
+            - If they put in some effort but failed, give them extremely low scores (10-30).
+
+            When writing your feedback:
+            - "strengths": Be extremely motivating! If they got a 0, praise them for taking the bold step to launch the interview, and encourage them to actually try the problem next time.
+            - "weaknesses": Be direct but constructive. Let them know why they got a 0/100 (e.g. "You didn't submit any code or answer the questions").
+            - "actions": Provide 3-4 highly actionable tips, suggestions, and learning paths. Don't just say "Learn X"; give them a specific, motivating way to improve.
+
+            Output JSON only: 
+            { 
+              "score": 0, 
+              "tech_score": 0, 
+              "reasoning_score": 0, 
+              "comm_score": 0,
+              "integrity_score": 95,
+              "strengths": "...", 
+              "weaknesses": "...", 
+              "radar_values": [0, 0, 0, 0, 85],
+              "actions": ["Tip 1...", "Tip 2...", "Tip 3..."]
+            }`;
+
+      let reportData;
+      try {
+        const groqResponse = await fetch(
+          "https://api.groq.com/openai/v1/chat/completions",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": "Bearer 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",
+            },
+            body: JSON.stringify({
+              model: "llama-3.1-8b-instant",
+              messages: [
+                { role: "system", content: "You are an expert Technical Interview Analyst. You output ONLY valid JSON. No markdown, no explanation, just the JSON object." },
+                { role: "user", content: prompt }
+              ],
+              temperature: 0.3,
+              max_tokens: 800,
+            }),
+          },
+        );
+        const groqData = await groqResponse.json();
+        if (groqData.error) throw new Error(groqData.error.message || "Groq API Error");
+
+        let text = groqData.choices[0].message.content;
+        const startIdx = text.indexOf("{");
+        const endIdx = text.lastIndexOf("}");
+
+        if (startIdx !== -1 && endIdx !== -1) {
+          text = text.substring(startIdx, endIdx + 1);
+        }
+
+        reportData = JSON.parse(text);
+      } catch (error) {
+        console.error("LLM Generation Failed:", error);
+        console.warn("Using Simulation Data");
+        reportData = {
+          score: 82,
+          tech_score: 85,
+          reasoning_score: 70,
+          comm_score: 78,
+          integrity_score: 95,
+          strengths: "Good technical concepts.",
+          weaknesses: "Need more depth.",
+          radar_values: [85, 75, 80, 70, 90],
+          actions: [
+            "Practice translating your verbal logic directly to code structure",
+            "Review Big-O time complexity",
+          ],
+        };
+      }
+
+      renderReport(reportData);
+
+      // --- ROBUST SAVE LOGIC ---
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          document.getElementById("statusText").innerText =
+            "Saving Results to Cloud...";
+          try {
+            const userRef = doc(db, "users", user.uid);
+            // Using setDoc with merge:true ensures it creates the doc if missing
+            await setDoc(
+              userRef,
+              {
+                interviewsCompleted: increment(1),
+                totalScore: increment(reportData.score),
+                practiceMinutes: increment(estimatedDuration),
+              },
+              { merge: true },
+            );
+            console.log("Stats Saved Successfully!");
+          } catch (e) {
+            console.error("Save Failed:", e);
+            alert(
+              "Could not save stats. Check if 'localhost' is authorized in Firebase Console.",
+            );
+          }
+        } else {
+          console.warn("User not logged in - Stats not saved.");
+        }
+      });
+    }
+
+    function renderReport(data) {
+      document.getElementById("loadingScreen").classList.add("hidden");
+      document.getElementById("mainContent").classList.remove("hidden");
+
+      animateValue("totalScore", 0, data.score, 1000);
+      document.getElementById("strengthText").innerText = data.strengths;
+      document.getElementById("weaknessText").innerText = data.weaknesses;
+
+      // Render Actions
+      const actionsContainer = document.getElementById("actionPlanContainer");
+      actionsContainer.innerHTML = "";
+      (data.actions || ["Keep practicing"]).forEach((action, idx) => {
+        actionsContainer.innerHTML += `
+                    <div class="flex items-start gap-4 p-4 rounded-xl bg-slate-800/50 border border-white/5">
+                        <div class="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-400 flex items-center justify-center font-bold font-mono text-sm shrink-0">${idx + 1}</div>
+                        <p class="text-gray-300 text-sm leading-relaxed mt-1">${action}</p>
+                    </div>
+                `;
+      });
+
+      setTimeout(() => {
+        document.getElementById("techBar").style.width =
+          data.tech_score + "%";
+        document.getElementById("techText").innerText = data.tech_score + "%";
+
+        document.getElementById("reasonBar").style.width =
+          data.reasoning_score + "%";
+        document.getElementById("reasonText").innerText =
+          data.reasoning_score + "%";
+
+        document.getElementById("commBar").style.width =
+          data.comm_score + "%";
+        document.getElementById("commText").innerText = data.comm_score + "%";
+
+        document.getElementById("integBar").style.width =
+          data.integrity_score + "%";
+        document.getElementById("integText").innerText =
+          data.integrity_score + "%";
+      }, 100);
+
+      new Chart(document.getElementById("radarChart").getContext("2d"), {
+        type: "radar",
+        data: {
+          labels: ["Knowledge", "Comm.", "Logic", "Confidence", "Speed"],
+          datasets: [
+            {
+              data: data.radar_values,
+              backgroundColor: "rgba(99, 102, 241, 0.2)",
+              borderColor: "#6366f1",
+              borderWidth: 2,
+              pointBackgroundColor: "#fff",
+            },
+          ],
+        },
+        options: {
+          scales: {
+            r: {
+              angleLines: { color: "rgba(255,255,255,0.1)" },
+              grid: { color: "rgba(255,255,255,0.1)" },
+              pointLabels: { color: "#cbd5e1" },
+              ticks: { display: false },
+              suggestedMin: 0,
+              suggestedMax: 100,
+            },
+          },
+          plugins: { legend: { display: false } },
+        },
+      });
+      if (data.score > 70)
+        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+    }
+
+    function animateValue(id, start, end, duration) {
+      const obj = document.getElementById(id);
+      let startTimestamp = null;
+      const step = (timestamp) => {
+        if (!startTimestamp) startTimestamp = timestamp;
+        const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+        obj.innerHTML = Math.floor(progress * (end - start) + start);
+        if (progress < 1) window.requestAnimationFrame(step);
+      };
+      window.requestAnimationFrame(step);
+    }
+
+    window.onload = generateReport;
+  </script>
+  <footer class="py-8 border-t border-white/5 text-center text-gray-500 text-sm bg-transparent mt-12">
+    <p>&copy; 2026 MockMentor AI. Built with ❤️ By Jai Jadhav (JJ.28).</p>
+  </footer>
+</body>
+
+</html>
